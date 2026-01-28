@@ -1,89 +1,72 @@
-# 🤖 Sentinel Discord Bot
+# 🤖 Sentinel – Discord Bot
 
 <div align="center">
 
 ![Version](https://img.shields.io/badge/version-2.0.0--alpha.1-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
-![Discord.js](https://img.shields.io/badge/discord.js-v14.16.3-7289DA)
+![Discord.js](https://img.shields.io/badge/discord.js-v14-7289DA)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-production-success)
+![Status](https://img.shields.io/badge/status-stable-success)
 
-**Bot Discord multifonction avec système de modération, économie, niveaux et utilitaires**
+**Bot Discord complet : modération, économie, niveaux, outils et fun.**
 
-[Installation](#-installation) • [Commandes](#-commandes) • [Configuration](#️-configuration) • [Déploiement](#-déploiement)
+[Installation](#-installation) • [Configuration](#️-configuration) • [Commandes](#-commandes) • [Développement](#-développement)
 
 </div>
-
----
-
-## 📋 Table des matières
-
-- [Fonctionnalités](#-fonctionnalités)
-- [Prérequis](#-prérequis)
-- [Installation](#-installation)
-- [Configuration](#️-configuration)
-- [Commandes](#-commandes)
-- [Structure du projet](#-structure-du-projet)
-- [Base de données](#-base-de-données)
-- [Déploiement](#-déploiement)
-- [Contribuer](#-contribuer)
-- [Licence](#-licence)
 
 ---
 
 ## ✨ Fonctionnalités
 
 ### 🛡️ Modération
-- **Avertissements** : Système de warns avec historique
-- **Sanctions** : Ban, kick avec logs détaillés
-- **Nettoyage** : Suppression de messages en masse
-- **Logs automatiques** : Enregistrement de toutes les actions
+- Avertissements persistants (warns) avec historique.
+- Sanctions : bannissement, expulsion, nettoyage de messages.
+- Journal de modération centralisé (logs dédiés).
 
 ### 💰 Économie
-- **Système monétaire** : Balance + compte en banque
-- **Récompenses** : Daily (24h) et work (1h)
-- **Transactions** : Paiement entre utilisateurs
-- **Classement** : Leaderboard des plus riches
+- Portefeuille + compte en banque par utilisateur et par serveur.
+- Récompenses quotidiennes (`/daily`) et travail rémunéré (`/work`).
+- Transferts entre utilisateurs (`/pay`) et classement des plus riches.
 
-### 📈 Système de niveaux
-- **XP sur messages** : Gain automatique d'expérience
-- **Niveaux progressifs** : Formule équilibrée
-- **Notifications** : Annonce des level up
-- **Classement** : Leaderboard des niveaux
+### 📈 Niveaux & XP
+- Gain d'XP basé sur l'activité (messages).
+- Niveaux progressifs avec formule équilibrée.
+- Annonce des montées de niveau et leaderboard possible.
 
-### 🎮 Commandes fun
-- **8ball** : Boule magique pour réponses
-- **Coinflip** : Pile ou face
-- **Dice** : Lancer de dés (6/12/20/100 faces)
+### 🎲 Fun
+- Boule magique (`/8ball`).
+- Pile ou face (`/coinflip`).
+- Lancer de dés paramétrable (`/dice`).
 
 ### 🔧 Utilitaires
-- **Informations** : Serveur, utilisateur, avatar
-- **Aide interactive** : Menu avec sélection par catégorie
-- **Ping** : Latence API et WebSocket
+- Informations serveur et utilisateur.
+- Affichage d'avatar.
+- Commande d'aide interactive.
+- Test de latence (`/ping`).
 
 ### ⚙️ Administration
-- **Setup automatique** : Configuration complète en une commande
-- **Configuration** : Personnalisation du serveur
-- **Reload** : Rechargement des commandes à chaud
+- Configuration automatique du serveur via `/setup`.
+- Ajustement fin des paramètres via `/config`.
+- Rechargement de commandes sans redémarrage avec `/reload`.
 
 ---
 
 ## 📦 Prérequis
 
-- **Node.js** ≥ 18.0.0
-- **npm** ≥ 8.0.0
-- **Git** (pour le déploiement)
-- Un **bot Discord** créé sur le [Developer Portal](https://discord.com/developers/applications)
+- Node.js **>= 18.0.0**
+- npm **>= 8.0.0**
+- Un compte Discord avec accès au **Developer Portal**
+- Un bot Discord créé (Client ID + token)
 
 ---
 
 ## 🚀 Installation
 
-### 1. Cloner le repository
+### 1. Cloner le dépôt
 
 ```bash
-git clone https://github.com/votre-username/sentinel-bot.git
-cd sentinel-bot
+git clone https://github.com/votre-username/sentinel.git
+cd sentinel
 ```
 
 ### 2. Installer les dépendances
@@ -92,32 +75,32 @@ cd sentinel-bot
 npm install
 ```
 
-### 3. Configurer les variables d'environnement
+### 3. Variables d'environnement
 
 Créer un fichier `.env` à la racine :
 
 ```env
-# Discord Configuration
-DISCORD_TOKEN=votre_token_discord
-DISCORD_CLIENT_ID=votre_client_id
-OWNER_ID=votre_user_id
+# Discord
+DISCORD_TOKEN=ton_token_discord
+DISCORD_CLIENT_ID=ton_client_id
+OWNER_ID=ton_id_utilisateur
 
-# Environment
+# Environnement
 NODE_ENV=development
 
-# Server (pour Koyeb)
+# Port du serveur de statut (optionnel)
 PORT=8000
 ```
 
-> ⚠️ **Ne JAMAIS commit le fichier .env !** Il est dans .gitignore.
+⚠️ Ne jamais committer `.env` (ajouté dans `.gitignore`).
 
 ### 4. Lancer le bot
 
 ```bash
-# Mode développement
+# Développement
 npm run dev
 
-# Mode production
+# Production
 npm start
 ```
 
@@ -125,25 +108,24 @@ npm start
 
 ## ⚙️ Configuration
 
-### Configuration automatique
+### Configuration automatique – `/setup`
 
-Utilisez la commande `/setup` (requiert les permissions Administrateur) pour :
-- ✅ Créer le rôle "Muted" avec permissions configurées
-- ✅ Créer le salon "sentinel-logs" (privé)
-- ✅ Créer le salon "bienvenue"
-- ✅ Enregistrer la configuration en base de données
+Commande à lancer par un administrateur dès l'arrivée du bot sur un serveur :
 
-### Configuration manuelle
+- Création du rôle `Muted` et configuration de ses permissions.
+- Création d'un salon de logs dédié.
+- Création d'un salon de bienvenue.
+- Enregistrement de la configuration dans la base de données.
 
-Utilisez `/config` pour personnaliser :
+### Configuration manuelle – `/config`
 
-```
-/config prefix:!           # Changer le préfixe (déprécié, slash commands)
-/config welcome_channel:#bienvenue
-/config log_channel:#logs
-/config mute_role:@Muted
-/config auto_role:@Membre
-```
+Permet d'ajuster les paramètres du serveur :
+
+- Salon de bienvenue
+- Salon de logs
+- Rôle muted
+- Rôle automatique à l'arrivée
+- Activation / désactivation de certains modules (économie, niveaux, etc. si prévu)
 
 ---
 
@@ -151,173 +133,146 @@ Utilisez `/config` pour personnaliser :
 
 ### 🛡️ Modération
 
-| Commande | Description | Permissions |
-|----------|-------------|-------------|
-| `/ban <user> [reason]` | Bannir un membre | BAN_MEMBERS |
-| `/kick <user> [reason]` | Expulser un membre | KICK_MEMBERS |
-| `/warn <user> <reason>` | Avertir un membre | MODERATE_MEMBERS |
-| `/warnings <user>` | Voir les avertissements | MODERATE_MEMBERS |
-| `/clear <amount> [user]` | Supprimer des messages | MANAGE_MESSAGES |
+| Commande                    | Description                        | Permission requise       |
+|----------------------------|------------------------------------|--------------------------|
+| `/ban <user> [reason]`     | Bannir un membre                  | BAN_MEMBERS             |
+| `/kick <user> [reason]`    | Expulser un membre                | KICK_MEMBERS            |
+| `/warn <user> <reason>`    | Ajouter un avertissement          | MODERATE_MEMBERS        |
+| `/warnings <user>`         | Lister les avertissements         | MODERATE_MEMBERS        |
+| `/clear <amount> [user]`   | Supprimer plusieurs messages      | MANAGE_MESSAGES         |
 
 ### 💰 Économie
 
-| Commande | Description | Cooldown |
-|----------|-------------|----------|
-| `/balance [user]` | Voir le solde | - |
-| `/daily` | Récompense journalière | 24h |
-| `/work` | Travailler pour gagner | 1h |
-| `/pay <user> <amount>` | Payer un utilisateur | - |
-| `/leaderboard [type]` | Classement richesse/niveaux | - |
+| Commande                        | Description                        | Cooldown |
+|--------------------------------|------------------------------------|----------|
+| `/balance [user]`              | Affiche la balance d'un utilisateur | –      |
+| `/daily`                       | Récompense journalière             | 24 h    |
+| `/work`                        | Gagner de l'argent en travaillant  | 1 h     |
+| `/pay <user> <amount>`         | Transférer des coins               | –       |
+| `/leaderboard [balance/level]` | Classement économie/niveaux        | –       |
 
 ### 📈 Niveaux
 
-| Commande | Description |
-|----------|-------------|
-| `/rank [user]` | Voir niveau et XP |
+| Commande         | Description                     |
+|-----------------|---------------------------------|
+| `/rank [user]`  | Niveau et XP d'un utilisateur   |
 
 ### 🎲 Fun
 
-| Commande | Description |
-|----------|-------------|
-| `/8ball <question>` | Poser une question à la boule magique |
-| `/coinflip` | Lancer une pièce |
-| `/dice [sides]` | Lancer un dé |
+| Commande                 | Description                        |
+|-------------------------|------------------------------------|
+| `/8ball <question>`     | Réponse aléatoire type "8ball"    |
+| `/coinflip`             | Pile ou face                      |
+| `/dice [sides]`         | Lancer un dé (6, 12, 20, 100…)    |
 
 ### 🔧 Utilitaires
 
-| Commande | Description |
-|----------|-------------|
-| `/help [command]` | Menu d'aide interactif |
-| `/ping` | Latence du bot |
-| `/avatar [user]` | Afficher un avatar |
-| `/userinfo [user]` | Infos sur un utilisateur |
-| `/serverinfo` | Infos sur le serveur |
+| Commande              | Description                          |
+|----------------------|--------------------------------------|
+| `/help [command]`    | Aide générale ou détaillée par commande |
+| `/ping`              | Latence API / WebSocket             |
+| `/avatar [user]`     | Avatar d'un utilisateur             |
+| `/userinfo [user]`   | Infos détaillées sur un utilisateur |
+| `/serverinfo`        | Infos complètes sur le serveur      |
 
 ### ⚙️ Administration
 
-| Commande | Description | Permissions |
-|----------|-------------|-------------|
-| `/setup` | Configuration automatique | ADMINISTRATOR |
-| `/config <option> <value>` | Modifier la config | ADMINISTRATOR |
-| `/reload <command>` | Recharger une commande | OWNER_ONLY |
+| Commande                         | Description                         | Permission       |
+|---------------------------------|-------------------------------------|------------------|
+| `/setup`                        | Configuration automatique           | ADMINISTRATOR    |
+| `/config <option> <value>`      | Modifier la configuration           | ADMINISTRATOR    |
+| `/reload <command>`             | Recharger une commande              | Propriétaire bot |
 
 ---
 
-## 📁 Structure du projet
+## 🗂️ Structure du projet
 
 ```
-sentinel-bot/
+sentinel/
 ├── src/
-│   ├── bot.js                      # Point d'entrée principal
-│   ├── commands/                   # Commandes slash
-│   │   ├── admin/                  # Commandes administrateur
-│   │   ├── economy/                # Système d'économie
-│   │   ├── fun/                    # Commandes amusantes
-│   │   ├── levels/                 # Système de niveaux
-│   │   ├── moderation/             # Outils de modération
-│   │   └── utility/                # Utilitaires
+│   ├── bot.js                 # Point d'entrée
+│   ├── commands/              # Commandes slash
+│   │   ├── admin/
+│   │   ├── economy/
+│   │   ├── fun/
+│   │   ├── levels/
+│   │   ├── moderation/
+│   │   └── utility/
 │   ├── config/
-│   │   └── config.js               # Configuration globale
+│   │   └── config.js          # Configuration globale
 │   ├── database/
-│   │   └── migrations/             # Migrations SQL
-│   │       └── 001_initial_schema.js
-│   ├── events/                     # Événements Discord
-│   │   ├── client/                 # ready, interactionCreate
-│   │   ├── guild/                  # guildCreate, guildDelete
-│   │   └── member/                 # memberAdd, memberRemove
-│   ├── handlers/                   # Gestionnaires système
-│   │   ├── CommandHandler.js       # Chargement commandes
-│   │   ├── DatabaseHandler.js      # Gestion BDD
-│   │   └── EventHandler.js         # Chargement événements
+│   │   └── migrations/        # Migrations SQLite
+│   ├── events/
+│   │   ├── client/            # ready, interactionCreate…
+│   │   ├── guild/             # guildCreate, guildDelete…
+│   │   └── member/            # guildMemberAdd, guildMemberRemove…
+│   ├── handlers/
+│   │   ├── CommandHandler.js  # Chargement des commandes
+│   │   ├── DatabaseHandler.js # Accès base de données
+│   │   └── EventHandler.js    # Gestion des events
 │   └── utils/
-│       └── logger.js               # Système de logs
+│       └── logger.js          # Logger centralisé
 ├── data/
-│   └── sentinel.db                 # Base de données SQLite
-├── .env                            # Variables d'environnement
-├── .gitignore                      # Fichiers ignorés
-├── package.json                    # Dépendances
-└── README.md                       # Ce fichier
+│   └── sentinel.db            # Base SQLite (générée au runtime)
+├── package.json
+├── .env
+├── .gitignore
+└── README.md
 ```
 
 ---
 
 ## 💾 Base de données
 
-### Schéma SQLite
+Sentinel utilise **SQLite** via un gestionnaire centralisé.
 
-Le bot utilise **SQLite** avec 5 tables principales :
+### Tables principales
 
-#### `guilds` - Configuration des serveurs
-- Configuration par serveur (prefix, channels, roles)
-- Activation/désactivation des modules
+- **guilds** : Configuration par serveur (channels, rôles, modules actifs)
+- **users** : Économie, niveaux, XP, timestamps de cooldown
+- **warns** : Avertissements (user, modérateur, raison, actif/inactif)
+- **tickets** : Tickets de support (si activé)
+- **mod_logs** : Historique des actions de modération
 
-#### `users` - Données utilisateurs
-- Balance et bank (économie)
-- Level et XP (niveaux)
-- Cooldowns (daily, work)
+Les migrations sont appliquées automatiquement au démarrage, ce qui garantit que le schéma est à jour sans intervention manuelle.
 
-#### `warns` - Avertissements
-- Historique des warnings
-- Status actif/inactif
-- Modérateur et raison
+### Schéma détaillé
 
-#### `tickets` - Système de tickets
-- Gestion des tickets de support
-- Status open/closed
-- Historique complet
-
-#### `mod_logs` - Logs de modération
-- Historique de toutes les actions
-- Ban, kick, warn, mute
-- Durées et raisons
-
-### Migrations
-
-Les migrations sont automatiques au démarrage :
-- Détection des migrations manquantes
-- Exécution séquentielle
-- Historique dans table `migrations`
-
----
-
-## 🌐 Déploiement
-
-### Déploiement local
-
-```bash
-npm start
+#### Table `guilds`
+```sql
+CREATE TABLE guilds (
+  guild_id TEXT PRIMARY KEY,
+  name TEXT,
+  prefix TEXT DEFAULT '+',
+  welcome_channel TEXT,
+  log_channel TEXT,
+  mute_role TEXT,
+  auto_role TEXT,
+  level_system_enabled BOOLEAN DEFAULT 1,
+  economy_enabled BOOLEAN DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-### Déploiement sur Koyeb
-
-1. **Créer un compte** sur [Koyeb](https://www.koyeb.com)
-
-2. **Connecter GitHub** :
-   - Autoriser l'accès au repository
-   - Sélectionner la branche `main`
-
-3. **Configurer l'application** :
-   - **Build command** : `npm install`
-   - **Run command** : `node src/bot.js`
-   - **Port** : `8000`
-   - **Health check** : `/health`
-
-4. **Ajouter les variables d'environnement** :
-   ```
-   DISCORD_TOKEN=xxx
-   DISCORD_CLIENT_ID=xxx
-   OWNER_ID=xxx
-   NODE_ENV=production
-   PORT=8000
-   ```
-
-5. **Déployer** : Push sur `main` déclenche auto-déploiement
-
-### Health Check
-
-Le bot expose un serveur Express sur le port 8000 :
-- `GET /` : Informations générales
-- `GET /health` : Status détaillé (uptime, guilds, users)
+#### Table `users`
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  guild_id TEXT NOT NULL,
+  balance INTEGER DEFAULT 0,
+  bank INTEGER DEFAULT 0,
+  level INTEGER DEFAULT 0,
+  xp INTEGER DEFAULT 0,
+  last_daily DATETIME,
+  last_work DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, guild_id),
+  FOREIGN KEY (guild_id) REFERENCES guilds(guild_id) ON DELETE CASCADE
+);
+```
 
 ---
 
@@ -325,15 +280,15 @@ Le bot expose un serveur Express sur le port 8000 :
 
 ### Ajouter une commande
 
-1. Créer un fichier dans `src/commands/<catégorie>/<nom>.js`
+Créer un fichier dans `src/commands/<catégorie>/<nom>.js` :
 
 ```javascript
 import { SlashCommandBuilder } from 'discord.js';
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('macommande')
-    .setDescription('Description de ma commande'),
+    .setName('example')
+    .setDescription('Commande d'exemple'),
 
   category: 'utility',
   cooldown: 3,
@@ -341,39 +296,38 @@ export default {
   botPermissions: [],
 
   async execute(interaction) {
-    await interaction.reply('Hello World!');
+    await interaction.reply('Exemple de réponse.');
   },
 };
 ```
 
-2. Redémarrer le bot (ou `/reload macommande`)
+La commande est chargée automatiquement au démarrage.
 
 ### Ajouter un événement
 
-1. Créer un fichier dans `src/events/<catégorie>/<nom>.js`
+Créer un fichier dans `src/events/<catégorie>/<nom>.js` :
 
 ```javascript
 export default {
   name: 'messageCreate',
   category: 'message',
-  once: false, // true = s'exécute une fois
+  once: false,
 
   async execute(message) {
-    console.log(`Message reçu: ${message.content}`);
+    if (message.author.bot) return;
+    // Logique personnalisée ici
   },
 };
 ```
 
-2. Redémarrer le bot
-
 ### Ajouter une migration
 
-1. Créer `src/database/migrations/00X_nom_migration.js`
+Créer un fichier dans `src/database/migrations/00X_nom_migration.js` :
 
 ```javascript
 export async function up(db) {
   db.exec(`
-    CREATE TABLE ma_table (
+    CREATE TABLE nouvelle_table (
       id INTEGER PRIMARY KEY,
       data TEXT
     )
@@ -382,101 +336,114 @@ export async function up(db) {
 }
 
 export async function down(db) {
-  db.exec(`DROP TABLE ma_table`);
+  db.exec(`DROP TABLE nouvelle_table`);
   console.log('✅ Table supprimée');
 }
 ```
 
-2. Redémarrer le bot (migration auto)
+Les migrations sont exécutées automatiquement au démarrage.
 
 ---
 
 ## 📊 Performances
 
-### Optimisations
+### Optimisations implémentées
 
-- ✅ **SQLite synchrone** : Pas d'overhead async
-- ✅ **Cache Discord.js** : Données en mémoire
-- ✅ **Index BDD** : Recherches optimisées
-- ✅ **Cooldowns en Map** : Pas de requêtes BDD
-- ✅ **WAL mode** : Écritures concurrentes
+- ✅ **SQLite synchrone** : Pas d'overhead async, requêtes rapides
+- ✅ **Cache Discord.js** : Données en mémoire (guilds, users, channels)
+- ✅ **Index de base de données** : Recherches optimisées
+- ✅ **Cooldowns en mémoire** : Map JavaScript, pas de requêtes BDD
+- ✅ **WAL mode** : Écritures concurrentes sans blocage
 
-### Métriques
+### Métriques typiques
 
-- **Latence API** : ~50-150ms
-- **Latence WebSocket** : ~20-80ms
-- **Temps commande** : ~200-500ms
-- **Mémoire** : ~100-200MB
-- **CPU idle** : < 5%
+- **Latence API Discord** : 50-150 ms
+- **Latence WebSocket** : 20-80 ms
+- **Temps d'exécution commande** : < 500 ms
+- **Mémoire utilisée** : 100-200 MB
+- **CPU au repos** : < 5%
 
 ---
 
-## 🛡️ Sécurité
+## 🛡️ Sécurité & bonnes pratiques
 
-### Bonnes pratiques implémentées
+### Mesures de sécurité
 
-✅ **Token sécurisé** : Variables d'environnement uniquement  
-✅ **Gestion erreurs** : Try/catch partout  
-✅ **Vérification permissions** : Bot + utilisateur  
-✅ **Hiérarchie rôles** : Empêche abus modération  
-✅ **Rate limiting** : Cooldowns sur commandes  
-✅ **SQL injection** : Prepared statements  
-✅ **Logs structurés** : Winston avec timestamps  
+✅ **Variables d'environnement** : Token et informations sensibles dans `.env`  
+✅ **Gestion des erreurs** : Try/catch systématique  
+✅ **Vérification des permissions** : Bot ET utilisateur  
+✅ **Hiérarchie des rôles** : Empêche les abus de modération  
+✅ **Rate limiting** : Cooldowns sur toutes les commandes  
+✅ **Requêtes préparées** : Protection contre les injections SQL  
+✅ **Logs structurés** : Winston avec timestamps et niveaux  
 
 ### Recommandations
 
-⚠️ **Ne jamais commit** :
+⚠️ **À ne jamais committer** :
 - Fichier `.env`
-- Token Discord
-- Fichiers de base de données
-
-⚠️ **Backup régulier** :
+- Tokens Discord
 - Base de données `sentinel.db`
-- Configuration serveurs
+
+⚠️ **Sauvegardes régulières** :
+- Base de données SQLite
+- Configuration des serveurs
 
 ---
 
-## 🤝 Contribuer
+## 🤝 Contribution
 
 Les contributions sont les bienvenues !
 
+### Processus
+
 1. **Fork** le projet
-2. **Créer une branche** : `git checkout -b feature/ma-feature`
-3. **Commit** : `git commit -m 'feat: ajout de ma feature'`
-4. **Push** : `git push origin feature/ma-feature`
-5. **Pull Request** : Ouvrir une PR sur GitHub
+2. **Créer une branche** : `git checkout -b feature/nouvelle-fonctionnalite`
+3. **Commit** : `git commit -m 'feat: ajout nouvelle fonctionnalité'`
+4. **Push** : `git push origin feature/nouvelle-fonctionnalite`
+5. **Pull Request** : Ouvrir une PR avec description détaillée
 
 ### Convention de commits
+
+Suivre la convention **Conventional Commits** :
 
 - `feat:` Nouvelle fonctionnalité
 - `fix:` Correction de bug
 - `docs:` Documentation
-- `style:` Formatage code
-- `refactor:` Refactorisation
-- `perf:` Performance
-- `test:` Tests
-- `chore:` Maintenance
+- `style:` Formatage, style de code
+- `refactor:` Refactorisation sans changement de fonctionnalité
+- `perf:` Amélioration des performances
+- `test:` Ajout ou modification de tests
+- `chore:` Tâches de maintenance
 
 ---
 
 ## 📝 Changelog
 
-### v2.0.0-alpha.1 (28/01/2026)
+### v2.0.0-alpha.1 (28 janvier 2026)
 
-**🎉 Première version alpha en production**
+**🎉 Première version alpha stable**
 
+**Fonctionnalités principales** :
 - ✅ 22 commandes slash fonctionnelles
-- ✅ Système de base de données SQLite
-- ✅ Gestion événements Discord complète
-- ✅ Déploiement Koyeb avec health check
+- ✅ Système de base de données SQLite avec migrations automatiques
+- ✅ Gestion complète des événements Discord
+- ✅ Health check server pour monitoring
 - ✅ Documentation complète
 
-**Fonctionnalités** :
-- Modération (ban, kick, warn, clear)
-- Économie (balance, daily, work, pay)
-- Niveaux (XP automatique sur messages)
-- Utilitaires (help, ping, avatar, infos)
-- Administration (setup, config, reload)
+**Modules** :
+- **Modération** : ban, kick, warn, warnings, clear
+- **Économie** : balance, daily, work, pay, leaderboard
+- **Niveaux** : rank, XP automatique sur messages
+- **Fun** : 8ball, coinflip, dice
+- **Utilitaires** : help, ping, avatar, userinfo, serverinfo
+- **Administration** : setup, config, reload
+
+**Technique** :
+- Architecture modulaire avec handlers
+- Gestion d'erreurs centralisée
+- Logging avec Winston
+- Cooldowns et rate limiting
+- Sécurité renforcée (permissions, hiérarchie rôles)
 
 ---
 
@@ -487,7 +454,7 @@ Ce projet est sous licence **MIT**.
 ```
 MIT License
 
-Copyright (c) 2026 swiffeurr59
+Copyright (c) 2026 Clément DUPONT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -510,27 +477,25 @@ SOFTWARE.
 
 ---
 
-## 📞 Support
+## 👤 Auteur
 
-- **Issues** : [GitHub Issues](https://github.com/votre-username/sentinel-bot/issues)
-- **Discussions** : [GitHub Discussions](https://github.com/votre-username/sentinel-bot/discussions)
-- **Discord** : [Serveur de support](https://discord.gg/votre-invite)
+**Clément DUPONT**
 
 ---
 
 ## 🙏 Remerciements
 
-- [Discord.js](https://discord.js.org/) - Framework Discord
-- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - Base de données
-- [Winston](https://github.com/winstonjs/winston) - Système de logs
-- [Koyeb](https://www.koyeb.com/) - Hébergement
+- [Discord.js](https://discord.js.org/) – Framework Discord pour Node.js
+- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) – Driver SQLite performant
+- [Winston](https://github.com/winstonjs/winston) – Système de logging
+- La communauté Discord.js pour le support et les ressources
 
 ---
 
 <div align="center">
 
-**Fait avec ❤️ par swiffeurr59**
+**Fait avec ❤️ par Clément DUPONT**
 
-⭐ **N'oubliez pas de mettre une étoile si le projet vous plaît !** ⭐
+⭐ **Si ce projet vous plaît, n'hésitez pas à lui donner une étoile !** ⭐
 
 </div>
