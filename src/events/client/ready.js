@@ -2,7 +2,7 @@ import { ActivityType } from 'discord.js';
 import logger from '../../utils/logger.js';
 
 export default {
-  name: 'ready',
+  name: 'clientReady',
   category: 'client',
   once: true,
 

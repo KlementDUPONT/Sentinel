@@ -1,121 +1,160 @@
 import { SlashCommandBuilder } from 'discord.js';
-import CustomEmbedBuilder from '../../utils/embedBuilder.js';
-import Models from '../../database/models/index.js';
-import Validator from '../../utils/validator.js';
-import { RESPONSE_MESSAGES } from '../../config/constants.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('pay')
-    .setDescription('Envoie de l\'argent à un utilisateur')
+    .setDescription('Transférer de l'argent à un autre utilisateur')
     .addUserOption(option =>
-      option.setName('utilisateur')
-        .setDescription('L\'utilisateur à payer')
-        .setRequired(true))
+      option
+        .setName('user')
+        .setDescription('L'utilisateur à payer')
+        .setRequired(true)
+    )
     .addIntegerOption(option =>
-      option.setName('montant')
-        .setDescription('Le montant à envoyer')
+      option
+        .setName('amount')
+        .setDescription('Le montant à transférer')
+        .setRequired(true)
         .setMinValue(1)
-        .setRequired(true)),
+    ),
 
+  category: 'economy',
+  cooldown: 5,
   guildOnly: true,
-  cooldown: 3,
 
   async execute(interaction) {
-    await interaction.deferReply();
-
-    const targetUser = interaction.options.getUser('utilisateur');
-    const amount = interaction.options.getInteger('montant');
+    const { client, guild, user } = interaction;
+    const target = interaction.options.getUser('user');
+    const amount = interaction.options.getInteger('amount');
 
     try {
       // Vérifications de base
-      if (targetUser.id === interaction.user.id) {
-        return interaction.editReply({
-          embeds: [CustomEmbedBuilder.error('Erreur', RESPONSE_MESSAGES.CANNOT_ACTION_SELF)]
+      if (target.bot) {
+        return await interaction.reply({
+          content: '❌ Vous ne pouvez pas payer un bot.',
+          flags: 64
         });
       }
 
-      if (targetUser.bot) {
-        return interaction.editReply({
-          embeds: [CustomEmbedBuilder.error('Erreur', RESPONSE_MESSAGES.CANNOT_ACTION_BOT)]
+      if (target.id === user.id) {
+        return await interaction.reply({
+          content: '❌ Vous ne pouvez pas vous payer vous-même.',
+          flags: 64
         });
       }
 
-      // Récupérer la config de la guilde
-      const guildConfig = await Models.Guild.getOrCreate(interaction.guildId);
-      
-      if (!guildConfig.economy_enabled) {
-        return interaction.editReply({
-          embeds: [CustomEmbedBuilder.error(
-            'Économie désactivée',
-            'Le système d\'économie est désactivé sur ce serveur.'
-          )]
+      // Validation du montant
+      if (amount <= 0) {
+        return await interaction.reply({
+          content: '❌ Le montant doit être supérieur à 0.',
+          flags: 64
         });
       }
 
-      // Vérifier le montant
-      if (!Validator.isValidAmount(amount)) {
-        return interaction.editReply({
-          embeds: [CustomEmbedBuilder.error('Erreur', 'Le montant est invalide.')]
+      if (amount > 999999999) {
+        return await interaction.reply({
+          content: '❌ Le montant est trop élevé (maximum : 999,999,999 🪙).',
+          flags: 64
         });
       }
 
-      // Récupérer les utilisateurs
-      await Models.User.getOrCreate(interaction.user.id, interaction.guildId);
-      await Models.User.getOrCreate(targetUser.id, interaction.guildId);
+      // Récupérer les données des deux utilisateurs
+      let senderData = client.db.getUser(user.id, guild.id);
+      let targetData = client.db.getUser(target.id, guild.id);
 
-      const senderBalance = Models.User.getBalance(interaction.user.id, interaction.guildId);
+      // Créer les utilisateurs s'ils n'existent pas
+      if (!senderData) {
+        client.db.createUser(user.id, guild.id);
+        senderData = { balance: 0, bank: 0 };
+      }
 
-      // Vérifier si l'utilisateur a assez d'argent
-      if (senderBalance.balance < amount) {
-        return interaction.editReply({
-          embeds: [CustomEmbedBuilder.error(
-            'Solde insuffisant',
-            `Tu n'as pas assez d'argent !\n\n**Ton solde :** ${Validator.formatNumber(senderBalance.balance)} ${guildConfig.currency_symbol}\n**Montant requis :** ${Validator.formatNumber(amount)} ${guildConfig.currency_symbol}`
-          )]
+      if (!targetData) {
+        client.db.createUser(target.id, guild.id);
+        targetData = { balance: 0, bank: 0 };
+      }
+
+      // Vérifier que l'expéditeur a assez d'argent
+      if (senderData.balance < amount) {
+        return await interaction.reply({
+          content: `❌ Vous n'avez pas assez d'argent. Vous avez **${senderData.balance.toLocaleString()} 🪙** et vous essayez de payer **${amount.toLocaleString()} 🪙**.`,
+          flags: 64
         });
       }
 
-      // Effectuer le transfert
-      Models.User.transfer(interaction.user.id, targetUser.id, interaction.guildId, amount);
+      // Effectuer la transaction
+      const newSenderBalance = senderData.balance - amount;
+      const newTargetBalance = targetData.balance + amount;
 
-      const newSenderBalance = Models.User.getBalance(interaction.user.id, interaction.guildId);
-      const newTargetBalance = Models.User.getBalance(targetUser.id, interaction.guildId);
+      // Vérifier que le destinataire ne dépasse pas la limite
+      if (newTargetBalance > 999999999) {
+        return await interaction.reply({
+          content: `❌ Cette transaction dépasserait la limite de balance de ${target.tag} (maximum : 999,999,999 🪙).`,
+          flags: 64
+        });
+      }
 
-      // Embed de confirmation
-      const embed = CustomEmbedBuilder.success(
-        '💸 Transfert effectué',
-        `Tu as envoyé **${Validator.formatNumber(amount)} ${guildConfig.currency_symbol}** à ${targetUser}!`
-      );
+      // Mettre à jour les balances
+      client.db.updateUser(user.id, guild.id, { balance: newSenderBalance });
+      client.db.updateUser(target.id, guild.id, { balance: newTargetBalance });
 
-      embed.addFields(
-        { 
-          name: 'Ton nouveau solde', 
-          value: `${Validator.formatNumber(newSenderBalance.balance)} ${guildConfig.currency_symbol}`, 
-          inline: true 
+      // Confirmation avec embed
+      const successEmbed = {
+        color: 0x00ff00,
+        title: '💸 Transaction réussie',
+        description: `${user} a transféré **${amount.toLocaleString()} 🪙** à ${target}`,
+        fields: [
+          {
+            name: '💰 Nouvelle balance',
+            value: `Vous avez maintenant **${newSenderBalance.toLocaleString()} 🪙**`,
+            inline: false
+          }
+        ],
+        footer: {
+          text: `Sentinel Bot • ${new Date().toLocaleDateString('fr-FR')}`,
+          icon_url: client.user.displayAvatarURL()
         },
-        { 
-          name: `Solde de ${targetUser.username}`, 
-          value: `${Validator.formatNumber(newTargetBalance.balance)} ${guildConfig.currency_symbol}`, 
-          inline: true 
-        }
-      );
+        timestamp: new Date().toISOString()
+      };
 
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.reply({ embeds: [successEmbed] });
 
-      // Notifier le destinataire
+      // Notification au destinataire (si possible)
       try {
-        const dmEmbed = CustomEmbedBuilder.success(
-          `💰 Argent reçu dans ${interaction.guild.name}`,
-          `${interaction.user.tag} t'a envoyé **${Validator.formatNumber(amount)} ${guildConfig.currency_symbol}** !\n\n**Nouveau solde :** ${Validator.formatNumber(newTargetBalance.balance)} ${guildConfig.currency_symbol}`
-        );
-        await targetUser.send({ embeds: [dmEmbed] });
+        const dmEmbed = {
+          color: 0x00ff00,
+          title: '💰 Vous avez reçu de l'argent !',
+          description: `${user.tag} vous a envoyé **${amount.toLocaleString()} 🪙** sur le serveur **${guild.name}**`,
+          fields: [
+            {
+              name: '💵 Votre nouvelle balance',
+              value: `**${newTargetBalance.toLocaleString()} 🪙**`,
+              inline: false
+            }
+          ],
+          footer: {
+            text: 'Sentinel Bot',
+            icon_url: client.user.displayAvatarURL()
+          },
+          timestamp: new Date().toISOString()
+        };
+
+        await target.send({ embeds: [dmEmbed] });
       } catch (error) {
-        // L'utilisateur a désactivé les DMs
+        // L'utilisateur a désactivé les DM, on ignore silencieusement
       }
 
     } catch (error) {
-      throw error;
+      console.error('Erreur dans la commande pay:', error);
+
+      const errorMessage = interaction.replied || interaction.deferred
+        ? { content: '❌ Une erreur est survenue lors de la transaction.', flags: 64 }
+        : { content: '❌ Une erreur est survenue lors de la transaction.', flags: 64 };
+
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(errorMessage);
+      } else {
+        await interaction.reply(errorMessage);
+      }
     }
   },
 };
