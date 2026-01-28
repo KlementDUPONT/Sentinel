@@ -1,4 +1,5 @@
 import { Client, GatewayIntentBits, Partials, ActivityType } from 'discord.js';
+import express from 'express';
 import config from './config/config.js';
 import logger from './utils/logger.js';
 import ErrorHandler from './handlers/ErrorHandler.js';
@@ -98,12 +99,6 @@ async function shutdown(signal) {
   logger.info(`🛑 Received ${signal}, shutting down gracefully...`);
 
   try {
-    // Déployer les commandes si nécessaire (en dev)
-    if (config.env.isDevelopment) {
-      logger.info('🔄 Clearing commands...');
-      await commandHandler.clearCommands();
-    }
-
     // Fermer la base de données
     logger.info('💾 Closing database connection...');
     databaseHandler.close();
@@ -125,26 +120,55 @@ async function shutdown(signal) {
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-// Gestion de l'arrêt Windows
-if (process.platform === 'win32') {
-  const readline = await import('readline');
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  rl.on('SIGINT', () => {
-    process.emit('SIGINT');
-  });
-}
-
 // Nettoyage périodique de la base de données (toutes les 24h)
 setInterval(() => {
   logger.info('🧹 Running scheduled database cleanup...');
   databaseHandler.cleanup();
 }, 24 * 60 * 60 * 1000);
 
-// Démarrer le bot
+// ========================================
+// Health Check Server pour Koyeb
+// ========================================
+const app = express();
+const PORT = process.env.PORT || 8080;
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    bot: client.user?.tag || 'Starting...',
+    uptime: Math.floor(process.uptime()),
+    guilds: client.guilds?.cache.size || 0,
+    users: client.users?.cache.size || 0,
+    version: config.bot.version,
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/stats', (req, res) => {
+  const stats = {
+    bot: client.user?.tag || 'Starting...',
+    guilds: client.guilds?.cache.size || 0,
+    users: client.users?.cache.size || 0,
+    commands: client.commands?.size || 0,
+    uptime: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+  };
+  res.status(200).json(stats);
+});
+
+// Démarrer le serveur HTTP
+app.listen(PORT, () => {
+  logger.info(`🌐 Health check server running on port ${PORT}`);
+});
+
+// Démarrer le bot Discord
 initialize();
 
 export default client;
