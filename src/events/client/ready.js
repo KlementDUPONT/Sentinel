@@ -50,13 +50,8 @@ async function deployCommands(client) {
   try {
     logger.info('🔄 Auto-deploying slash commands...');
 
-    const commands = Array.from(client.commands.values()).map((cmd) => ({
-      name: cmd.data.name,
-      description: cmd.data.description,
-      options: cmd.data.options || [],
-      default_member_permissions: cmd.data.default_member_permissions,
-      dm_permission: cmd.data.dm_permission ?? false,
-    }));
+    // Convert commands to JSON format
+    const commands = Array.from(client.commands.values()).map((cmd) => cmd.data.toJSON());
 
     logger.info(`🔄 Deploying ${commands.length} slash commands...`);
 

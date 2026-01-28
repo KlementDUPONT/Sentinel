@@ -177,9 +177,9 @@ class DatabaseHandler {
   createGuild(guildId, guildName) {
     const db = dbConnection.getDatabase();
     return db.prepare(`
-      INSERT INTO guilds (guild_id, guild_name) 
+      INSERT INTO guilds (guild_id, name) 
       VALUES (?, ?)
-      ON CONFLICT(guild_id) DO UPDATE SET guild_name = excluded.guild_name
+      ON CONFLICT(guild_id) DO UPDATE SET name = excluded.name
     `).run(guildId, guildName);
   }
 
