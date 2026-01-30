@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -46,123 +46,138 @@ export default {
         });
       }
 
-      // Créer les boutons de vérification avec IDs UNIQUES
-      const colors = ['🔴', '🔵', '🟢', '🟡'];
-      const correctIndex = Math.floor(Math.random() * colors.length);
-      const correctColor = colors[correctIndex];
-      const timestamp = Date.now();
-      const userId = interaction.user.id;
+      // Générer un code aléatoire de 6 caractères
+      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let verificationCode = '';
+      for (let i = 0; i < 6; i++) {
+        verificationCode += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
 
-      const buttons = colors.map((color, index) => {
-        return new ButtonBuilder()
-          .setCustomId(`verify_${index === correctIndex ? 'correct' : 'wrong'}_${index}_${timestamp}_${userId}`)
-          .setLabel(color)
-          .setStyle(index === correctIndex ? ButtonStyle.Success : ButtonStyle.Secondary);
-      });
-
-      // Mélanger les boutons
-      buttons.sort(() => Math.random() - 0.5);
-
-      const row = new ActionRowBuilder().addComponents(buttons);
+      // Créer l'embed de vérification
+      const verifyEmbed = new EmbedBuilder()
+        .setColor('#00FF00')
+        .setTitle('🔒 Verification Required')
+        .setDescription(`To verify that you are human, please type the following code:\n\n\`\`\`${verificationCode}\`\`\`\n\nYou have **60 seconds** to enter the code.`)
+        .setFooter({ text: 'Type the code exactly as shown (case insensitive)' })
+        .setTimestamp();
 
       await interaction.reply({
-        content: `🤖 **Verification**\n\nClick on the **${correctColor}** button to verify that you are human.`,
-        components: [row],
-        flags: 64
+        embeds: [verifyEmbed],
+        flags: 64 // Ephemeral (seulement visible par l'utilisateur)
       });
 
-      // Log pour debug
-      console.log(`[VERIFY] User ${interaction.user.tag} (${userId}) started verification`);
-      console.log(`[VERIFY] Timestamp: ${timestamp}`);
-      console.log(`[VERIFY] Correct button: index ${correctIndex}`);
+      console.log(`[VERIFY] User ${interaction.user.tag} needs to type: ${verificationCode}`);
 
-      // Créer un collector pour les boutons
-      const filter = i => {
-        const matches = i.customId.includes(timestamp.toString()) && i.customId.includes(userId);
-        console.log(`[VERIFY] Button click from ${i.user.tag}: customId=${i.customId}, matches=${matches}`);
-        return matches;
+      // Créer un collector pour les messages
+      const filter = m => {
+        // Vérifier que c'est le bon utilisateur
+        return m.author.id === interaction.user.id;
       };
 
-      const collector = interaction.channel.createMessageComponentCollector({ 
+      const collector = interaction.channel.createMessageCollector({ 
         filter, 
         time: 60000, // 60 secondes
-        max: 1
+        max: 1 // Accepter seulement 1 message
       });
 
-      collector.on('collect', async i => {
-        console.log(`[VERIFY] Collector triggered for ${i.user.tag}`);
-        console.log(`[VERIFY] Button customId: ${i.customId}`);
-        
-        // Déférer immédiatement
-        await i.deferUpdate();
+      collector.on('collect', async (message) => {
+        console.log(`[VERIFY] User ${message.author.tag} typed: ${message.content}`);
 
-        if (i.customId.includes('correct')) {
-          console.log(`[VERIFY] Correct button clicked!`);
-          
+        // Supprimer le message de l'utilisateur pour garder le salon propre
+        try {
+          await message.delete();
+        } catch (err) {
+          console.log('[VERIFY] Could not delete user message (missing permissions)');
+        }
+
+        // Vérifier si le code est correct (case insensitive)
+        if (message.content.toUpperCase() === verificationCode) {
+          console.log('[VERIFY] Code is CORRECT!');
+
           try {
             const role = interaction.guild.roles.cache.get(verificationConfig.verification_role);
             
             if (!role) {
               console.error(`[VERIFY] Role not found: ${verificationConfig.verification_role}`);
-              return interaction.editReply({
+              return interaction.followUp({
                 content: '❌ Verification role not found. Please contact an admin.',
-                components: []
+                flags: 64
               });
             }
 
             console.log(`[VERIFY] Role found: ${role.name} (${role.id})`);
-            console.log(`[VERIFY] Bot highest role: ${interaction.guild.members.me.roles.highest.name} (position: ${interaction.guild.members.me.roles.highest.position})`);
+            console.log(`[VERIFY] Bot highest role position: ${interaction.guild.members.me.roles.highest.position}`);
             console.log(`[VERIFY] Target role position: ${role.position}`);
 
-            // Vérifier si le bot peut gérer ce rôle
+            // Vérifier la hiérarchie des rôles
             if (role.position >= interaction.guild.members.me.roles.highest.position) {
-              console.error(`[VERIFY] Bot role too low! Bot: ${interaction.guild.members.me.roles.highest.position}, Target: ${role.position}`);
-              return interaction.editReply({
+              console.error(`[VERIFY] Bot role too low!`);
+              return interaction.followUp({
                 content: '❌ I cannot assign this role because it is higher than my highest role.\n\n**Admin:** Move my role above the verification role in Server Settings → Roles.',
-                components: []
+                flags: 64
               });
             }
 
             // Vérifier les permissions
-            const botPermissions = interaction.guild.members.me.permissions;
-            if (!botPermissions.has('ManageRoles')) {
+            if (!interaction.guild.members.me.permissions.has('ManageRoles')) {
               console.error(`[VERIFY] Missing ManageRoles permission!`);
-              return interaction.editReply({
+              return interaction.followUp({
                 content: '❌ I do not have the "Manage Roles" permission.\n\n**Admin:** Give me this permission in Server Settings.',
-                components: []
+                flags: 64
               });
             }
 
             console.log(`[VERIFY] Adding role to ${member.user.tag}...`);
             await member.roles.add(role);
             console.log(`[VERIFY] Role added successfully!`);
-            
-            await interaction.editReply({
-              content: `✅ **Verification successful!**\n\nYou now have the ${role} role and access to the server.`,
-              components: []
+
+            const successEmbed = new EmbedBuilder()
+              .setColor('#00FF00')
+              .setTitle('✅ Verification Successful!')
+              .setDescription(`Welcome ${member}! You now have access to the server.`)
+              .setTimestamp();
+
+            // Envoyer un message public de succès
+            await interaction.channel.send({
+              embeds: [successEmbed]
             });
+
           } catch (error) {
             console.error('[VERIFY] Error adding verification role:', error);
-            await interaction.editReply({
-              content: `❌ An error occurred while verifying you:\n\`\`\`${error.message}\`\`\`\n\nPlease contact an admin.`,
-              components: []
-            }).catch(() => {});
+            await interaction.followUp({
+              content: `❌ An error occurred:\n\`\`\`${error.message}\`\`\`\n\nPlease contact an admin.`,
+              flags: 64
+            });
           }
         } else {
-          console.log(`[VERIFY] Wrong button clicked!`);
-          await interaction.editReply({
-            content: '❌ **Verification failed!**\n\nYou clicked the wrong button. Please try `/verify` again.',
-            components: []
-          }).catch(() => {});
+          console.log('[VERIFY] Code is INCORRECT!');
+          
+          const errorEmbed = new EmbedBuilder()
+            .setColor('#FF0000')
+            .setTitle('❌ Verification Failed')
+            .setDescription('The code you entered is incorrect.\n\nPlease run `/verify` again to get a new code.')
+            .setTimestamp();
+
+          await interaction.followUp({
+            embeds: [errorEmbed],
+            flags: 64
+          });
         }
       });
 
       collector.on('end', (collected, reason) => {
         console.log(`[VERIFY] Collector ended: reason=${reason}, collected=${collected.size}`);
+        
         if (reason === 'time' && collected.size === 0) {
-          interaction.editReply({
-            content: '⏱️ **Verification expired!**\n\nPlease run `/verify` again.',
-            components: []
+          const timeoutEmbed = new EmbedBuilder()
+            .setColor('#FFA500')
+            .setTitle('⏱️ Verification Expired')
+            .setDescription('You did not enter the code in time.\n\nPlease run `/verify` again.')
+            .setTimestamp();
+
+          interaction.followUp({
+            embeds: [timeoutEmbed],
+            flags: 64
           }).catch(() => {});
         }
       });
