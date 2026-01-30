@@ -1,7 +1,6 @@
 import { Client, GatewayIntentBits, Partials, Collection } from 'discord.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import logger from './utils/logger.js';
 import config from './config/config.js';
 import databaseHandler from './handlers/DatabaseHandler.js';
 import EventHandler from './handlers/EventHandler.js';
@@ -10,6 +9,20 @@ import express from 'express';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Import logger avec fallback
+let logger;
+try {
+  const loggerModule = await import('./utils/logger.js');
+  logger = loggerModule.default;
+} catch (error) {
+  logger = {
+    info: (msg) => console.log('[INFO]', msg),
+    error: (msg, err) => console.error('[ERROR]', msg, err || ''),
+    warn: (msg) => console.warn('[WARN]', msg),
+    debug: (msg) => console.log('[DEBUG]', msg)
+  };
+}
 
 class SentinelBot {
   constructor() {
@@ -43,13 +56,11 @@ class SentinelBot {
 
   setupHealthCheck() {
     const app = express();
-    const port = process.env.PORT || 8000;
+    const port = config.port;
 
     logger.info('🔧 Configuring health check on port ' + port);
 
-    // Health check - répond TOUJOURS
     app.get('/health', (req, res) => {
-      logger.info('🏥 Health check request received');
       res.status(200).json({
         status: 'healthy',
         uptime: process.uptime(),
@@ -59,7 +70,6 @@ class SentinelBot {
     });
 
     app.get('/', (req, res) => {
-      logger.info('📡 Root endpoint request received');
       res.status(200).json({
         name: 'Sentinel Bot',
         version: config.version,
@@ -68,10 +78,8 @@ class SentinelBot {
       });
     });
 
-    // Démarrer le serveur
     const server = app.listen(port, '0.0.0.0', () => {
       logger.info('✅ Express server listening on 0.0.0.0:' + port);
-      logger.info('🔗 Health check available at http://0.0.0.0:' + port + '/health');
     });
 
     server.on('error', (error) => {
@@ -94,17 +102,19 @@ class SentinelBot {
       logger.info('🌍 Environment: ' + config.environment);
       logger.info('🔧 Prefix: ' + config.prefix);
       logger.info('🔑 Token: ' + (config.token ? '✅ Found' : '❌ Missing'));
+      logger.info('🆔 Client ID: ' + (config.clientId ? '✅ Found' : '❌ Missing'));
+      logger.info('🏠 Guild ID: ' + (config.guildId ? '✅ Found' : '❌ Missing'));
       logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       if (!config.token) {
-        throw new Error('DISCORD_TOKEN is not defined in environment variables!');
+        throw new Error('DISCORD_TOKEN is not defined!');
       }
 
       // Step 1: Initialize database
       logger.info('📦 Step 1/4: Database initialization');
-      const dbPath = join(process.cwd(), 'data', 'sentinel.db');
+      const dbPath = config.databasePath;
       await databaseHandler.initialize(dbPath);
-      logger.info('✅ Database ready');
+      logger.info('✅ Database ready at ' + dbPath);
 
       // Step 2: Load events
       logger.info('📦 Step 2/4: Loading events');
@@ -130,7 +140,9 @@ class SentinelBot {
     } catch (error) {
       logger.error('❌ Failed to initialize bot:');
       logger.error('Error message: ' + error.message);
-      logger.error('Stack trace:', error.stack);
+      if (error.stack) {
+        logger.error('Stack trace:', error.stack);
+      }
       process.exit(1);
     }
   }
@@ -138,37 +150,44 @@ class SentinelBot {
 
 // Error handlers
 process.on('unhandledRejection', (error) => {
-  logger.error('❌ Unhandled Promise Rejection:');
-  logger.error(error);
+  if (logger && logger.error) {
+    logger.error('❌ Unhandled Promise Rejection:', error);
+  } else {
+    console.error('❌ Unhandled Promise Rejection:', error);
+  }
 });
 
 process.on('uncaughtException', (error) => {
-  logger.error('❌ Uncaught Exception:');
-  logger.error(error);
+  if (logger && logger.error) {
+    logger.error('❌ Uncaught Exception:', error);
+  } else {
+    console.error('❌ Uncaught Exception:', error);
+  }
   process.exit(1);
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
-  logger.info('🛑 SIGINT received, shutting down gracefully...');
+  if (logger && logger.info) {
+    logger.info('🛑 SIGINT received, shutting down...');
+  }
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  logger.info('🛑 SIGTERM received, shutting down gracefully...');
+  if (logger && logger.info) {
+    logger.info('🛑 SIGTERM received, shutting down...');
+  }
   process.exit(0);
 });
 
-// 🔥 DÉMARRAGE
+// Démarrage
 logger.info('🌟 Starting Sentinel Bot Service...');
 
 const bot = new SentinelBot();
 
-// 1. Démarrer Express EN PREMIER
 logger.info('🌐 Step 1: Starting health check server...');
 bot.setupHealthCheck();
 
-// 2. Attendre 1 seconde puis initialiser Discord
 logger.info('⏳ Step 2: Waiting 1 second before Discord connection...');
 setTimeout(async () => {
   logger.info('🤖 Step 3: Initializing Discord bot...');

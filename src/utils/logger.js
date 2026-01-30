@@ -1,47 +1,78 @@
-import dotenv from 'dotenv';
+import winston from 'winston';
+import { mkdirSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-// Charger les variables d'environnement
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const config = {
-  // Discord Configuration
-  token: process.env.DISCORD_TOKEN || '',
-  clientId: process.env.DISCORD_CLIENT_ID || '',
-  ownerId: process.env.OWNER_ID || '',
+// Créer le dossier logs s'il n'existe pas
+const logsDir = join(__dirname, '../../logs');
+if (!existsSync(logsDir)) {
+  mkdirSync(logsDir, { recursive: true });
+}
+
+// Format personnalisé
+const customFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
+  let msg = timestamp + ' [' + level + ']: ' + message;
   
-  // Bot Information
-  version: 'alpha.2',
-  environment: process.env.NODE_ENV || 'production',
-  prefix: '!',
-  
-  // Server Configuration
-  port: parseInt(process.env.PORT) || 8000,
-  
-  // Logging Configuration
-  logging: {
-    level: process.env.LOG_LEVEL || 'info',
-    format: process.env.LOG_FORMAT || 'simple'
-  },
-  
-  // Environment Helpers
-  env: {
-    isDevelopment: process.env.NODE_ENV === 'development',
-    isProduction: process.env.NODE_ENV === 'production',
-    isTesting: process.env.NODE_ENV === 'test'
+  if (Object.keys(metadata).length > 0) {
+    msg += ' ' + JSON.stringify(metadata);
   }
+  
+  return msg;
+});
+
+// Configuration du logger
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.errors({ stack: true }),
+    customFormat
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        customFormat
+      ),
+    }),
+    new winston.transports.File({
+      filename: join(logsDir, 'error.log'),
+      level: 'error',
+      maxsize: 5242880,
+      maxFiles: 5,
+    }),
+    new winston.transports.File({
+      filename: join(logsDir, 'combined.log'),
+      maxsize: 5242880,
+      maxFiles: 10,
+    }),
+  ],
+});
+
+// Méthodes utilitaires
+logger.command = (user, command, guild) => {
+  logger.info('Command: /' + command + ' by ' + user + ' in ' + (guild || 'DM'));
 };
 
-// Validation
-if (!config.token) {
-  console.warn('⚠️ DISCORD_TOKEN is not set in environment variables');
+logger.event = (eventName, details = '') => {
+  logger.info('Event: ' + eventName + ' ' + details);
+};
+
+logger.database = (action, details = '') => {
+  logger.debug('Database: ' + action + ' ' + details);
+};
+
+logger.api = (method, endpoint, status) => {
+  logger.info('API: ' + method + ' ' + endpoint + ' - ' + status);
+};
+
+// Mode développement
+if (process.env.NODE_ENV === 'development') {
+  logger.level = 'debug';
+  logger.debug('Logger initialized in development mode');
 }
 
-if (!config.clientId) {
-  console.warn('⚠️ DISCORD_CLIENT_ID is not set in environment variables');
-}
-
-if (!config.ownerId) {
-  console.warn('⚠️ OWNER_ID is not set in environment variables');
-}
-
-export default config;
+export default logger;
