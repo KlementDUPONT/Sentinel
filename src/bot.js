@@ -180,7 +180,40 @@ class SentinelBot {
         // Nettoyer le token (enlever espaces et retours à la ligne)
         const cleanToken = config.token.trim();
         
+        // ✨ NOUVEAU : Ajouter un timeout de 30 secondes
+        const loginTimeout = setTimeout(() => {
+          logger.error('');
+          logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          logger.error('❌ Discord login TIMEOUT after 30 seconds');
+          logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          logger.error('');
+          logger.error('🔍 Possible causes:');
+          logger.error('');
+          logger.error('1️⃣  INVALID TOKEN');
+          logger.error('   → Go to https://discord.com/developers/applications');
+          logger.error('   → Select your bot');
+          logger.error('   → Go to "Bot" tab');
+          logger.error('   → Click "Reset Token"');
+          logger.error('   → Copy the NEW token');
+          logger.error('   → Update DISCORD_TOKEN in Railway');
+          logger.error('');
+          logger.error('2️⃣  MISSING INTENTS');
+          logger.error('   → Enable these in Discord Developer Portal:');
+          logger.error('     • Presence Intent');
+          logger.error('     • Server Members Intent');
+          logger.error('     • Message Content Intent');
+          logger.error('');
+          logger.error('3️⃣  NETWORK ISSUES');
+          logger.error('   → Discord API might be down');
+          logger.error('   → Check https://discordstatus.com');
+          logger.error('');
+          logger.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          process.exit(1);
+        }, 30000); // 30 secondes
+        
         await this.client.login(cleanToken);
+        clearTimeout(loginTimeout); // Annuler le timeout si la connexion réussit
+        
         this.isInitialized = true;
         logger.info('✅ Discord connection established');
         logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
