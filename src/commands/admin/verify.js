@@ -51,10 +51,11 @@ export default {
       const correctIndex = Math.floor(Math.random() * colors.length);
       const correctColor = colors[correctIndex];
       const timestamp = Date.now();
+      const userId = interaction.user.id;
 
       const buttons = colors.map((color, index) => {
         return new ButtonBuilder()
-          .setCustomId(`verify_${index === correctIndex ? 'correct' : 'wrong'}_${index}_${timestamp}_${interaction.user.id}`)
+          .setCustomId(`verify_${index === correctIndex ? 'correct' : 'wrong'}_${index}_${timestamp}_${userId}`)
           .setLabel(color)
           .setStyle(index === correctIndex ? ButtonStyle.Success : ButtonStyle.Secondary);
       });
@@ -70,47 +71,85 @@ export default {
         flags: 64
       });
 
+      // Log pour debug
+      console.log(`[VERIFY] User ${interaction.user.tag} (${userId}) started verification`);
+      console.log(`[VERIFY] Timestamp: ${timestamp}`);
+      console.log(`[VERIFY] Correct button: index ${correctIndex}`);
+
       // Créer un collector pour les boutons
       const filter = i => {
-        // Vérifier que c'est le bon user et que le customId contient le timestamp
-        return i.user.id === interaction.user.id && i.customId.includes(timestamp.toString());
+        const matches = i.customId.includes(timestamp.toString()) && i.customId.includes(userId);
+        console.log(`[VERIFY] Button click from ${i.user.tag}: customId=${i.customId}, matches=${matches}`);
+        return matches;
       };
 
       const collector = interaction.channel.createMessageComponentCollector({ 
         filter, 
-        time: 30000,
-        max: 1 // Accepter seulement 1 clic
+        time: 60000, // 60 secondes
+        max: 1
       });
 
       collector.on('collect', async i => {
-        // Déférer immédiatement pour éviter le timeout
+        console.log(`[VERIFY] Collector triggered for ${i.user.tag}`);
+        console.log(`[VERIFY] Button customId: ${i.customId}`);
+        
+        // Déférer immédiatement
         await i.deferUpdate();
 
         if (i.customId.includes('correct')) {
+          console.log(`[VERIFY] Correct button clicked!`);
+          
           try {
             const role = interaction.guild.roles.cache.get(verificationConfig.verification_role);
             
             if (!role) {
+              console.error(`[VERIFY] Role not found: ${verificationConfig.verification_role}`);
               return interaction.editReply({
                 content: '❌ Verification role not found. Please contact an admin.',
                 components: []
               });
             }
 
+            console.log(`[VERIFY] Role found: ${role.name} (${role.id})`);
+            console.log(`[VERIFY] Bot highest role: ${interaction.guild.members.me.roles.highest.name} (position: ${interaction.guild.members.me.roles.highest.position})`);
+            console.log(`[VERIFY] Target role position: ${role.position}`);
+
+            // Vérifier si le bot peut gérer ce rôle
+            if (role.position >= interaction.guild.members.me.roles.highest.position) {
+              console.error(`[VERIFY] Bot role too low! Bot: ${interaction.guild.members.me.roles.highest.position}, Target: ${role.position}`);
+              return interaction.editReply({
+                content: '❌ I cannot assign this role because it is higher than my highest role.\n\n**Admin:** Move my role above the verification role in Server Settings → Roles.',
+                components: []
+              });
+            }
+
+            // Vérifier les permissions
+            const botPermissions = interaction.guild.members.me.permissions;
+            if (!botPermissions.has('ManageRoles')) {
+              console.error(`[VERIFY] Missing ManageRoles permission!`);
+              return interaction.editReply({
+                content: '❌ I do not have the "Manage Roles" permission.\n\n**Admin:** Give me this permission in Server Settings.',
+                components: []
+              });
+            }
+
+            console.log(`[VERIFY] Adding role to ${member.user.tag}...`);
             await member.roles.add(role);
+            console.log(`[VERIFY] Role added successfully!`);
             
             await interaction.editReply({
-              content: '✅ **Verification successful!**\n\nYou now have access to the server.',
+              content: `✅ **Verification successful!**\n\nYou now have the ${role} role and access to the server.`,
               components: []
             });
           } catch (error) {
-            console.error('Error adding verification role:', error);
+            console.error('[VERIFY] Error adding verification role:', error);
             await interaction.editReply({
-              content: '❌ An error occurred while verifying you. Please contact an admin.',
+              content: `❌ An error occurred while verifying you:\n\`\`\`${error.message}\`\`\`\n\nPlease contact an admin.`,
               components: []
             }).catch(() => {});
           }
         } else {
+          console.log(`[VERIFY] Wrong button clicked!`);
           await interaction.editReply({
             content: '❌ **Verification failed!**\n\nYou clicked the wrong button. Please try `/verify` again.',
             components: []
@@ -119,6 +158,7 @@ export default {
       });
 
       collector.on('end', (collected, reason) => {
+        console.log(`[VERIFY] Collector ended: reason=${reason}, collected=${collected.size}`);
         if (reason === 'time' && collected.size === 0) {
           interaction.editReply({
             content: '⏱️ **Verification expired!**\n\nPlease run `/verify` again.',
@@ -128,7 +168,7 @@ export default {
       });
 
     } catch (error) {
-      console.error('Error in verify:', error);
+      console.error('[VERIFY] Error in verify command:', error);
       
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
