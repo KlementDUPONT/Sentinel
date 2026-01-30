@@ -1,9 +1,9 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } from 'discord.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('db-setup')
-    .setDescription('Setup missing database columns (admin only)')
+    .setDescription('Setup verification system in database (admin only)')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   category: 'admin',
@@ -18,59 +18,51 @@ export default {
         return interaction.editReply('❌ Database handler is not available.');
       }
 
-      // Tester différentes façons d'accéder à la DB
-      let database = db.db || db.database || db.connection || db;
-
-      if (!database) {
-        return interaction.editReply('❌ Database connection is not available. Please contact an administrator.');
+      // Récupérer ou créer la guild
+      let guildData = db.getGuild(interaction.guildId);
+      
+      if (!guildData) {
+        db.createGuild(interaction.guildId, interaction.guild.name);
+        guildData = db.getGuild(interaction.guildId);
       }
 
-      // Vérifier les colonnes existantes
-      let tableInfo;
-      try {
-        tableInfo = database.prepare('PRAGMA table_info(guilds)').all();
-      } catch (error) {
-        console.error('Error accessing database:', error);
-        return interaction.editReply('❌ Cannot access database. Error: ' + error.message);
-      }
+      // Vérifier si les colonnes existent déjà
+      const hasVerificationChannel = 'verification_channel' in guildData;
+      const hasVerificationRole = 'verification_role' in guildData;
 
-      const columnNames = tableInfo.map(col => col.name);
+      const embed = new EmbedBuilder()
+        .setColor(hasVerificationChannel && hasVerificationRole ? '#00FF00' : '#FFA500')
+        .setTitle('🔧 Database Setup')
+        .setDescription('Verification system database check:')
+        .addFields(
+          { 
+            name: 'Verification Channel Column', 
+            value: hasVerificationChannel ? '✅ Exists' : '⚠️ Missing (will be created on first setup)', 
+            inline: true 
+          },
+          { 
+            name: 'Verification Role Column', 
+            value: hasVerificationRole ? '✅ Exists' : '⚠️ Missing (will be created on first setup)', 
+            inline: true 
+          }
+        )
+        .setFooter({ text: 'Next step: Use /setup-verification' })
+        .setTimestamp();
 
-      let changes = [];
-
-      // Ajouter verification_channel si elle n'existe pas
-      if (!columnNames.includes('verification_channel')) {
-        try {
-          database.prepare('ALTER TABLE guilds ADD COLUMN verification_channel TEXT').run();
-          changes.push('✅ Added `verification_channel`');
-        } catch (error) {
-          changes.push('❌ Failed to add `verification_channel`: ' + error.message);
-        }
-      } else {
-        changes.push('ℹ️ `verification_channel` already exists');
-      }
-
-      // Ajouter verification_role si elle n'existe pas
-      if (!columnNames.includes('verification_role')) {
-        try {
-          database.prepare('ALTER TABLE guilds ADD COLUMN verification_role TEXT').run();
-          changes.push('✅ Added `verification_role`');
-        } catch (error) {
-          changes.push('❌ Failed to add `verification_role`: ' + error.message);
-        }
-      } else {
-        changes.push('ℹ️ `verification_role` already exists');
-      }
-
-      await interaction.editReply({
-        content: '**🔧 Database Setup Complete**\n\n' + changes.join('\n') + '\n\n**Next step:** Use `/setup-verification` to configure the system.'
-      });
+      await interaction.editReply({ embeds: [embed] });
 
     } catch (error) {
       console.error('Error in db-setup:', error);
       
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred during database setup.')
+        .addFields({ name: 'Error', value: error.message })
+        .setTimestamp();
+      
       if (interaction.deferred) {
-        await interaction.editReply('❌ An error occurred during database setup: ' + error.message);
+        await interaction.editReply({ embeds: [errorEmbed] });
       }
     }
   }

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } from 'discord.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -42,52 +42,46 @@ export default {
         });
       }
 
-      // Sauvegarder dans la base de données
       const db = interaction.client.db;
       
       if (!db) {
         return interaction.reply({
-          content: '❌ Database is not available. Please contact an administrator.',
+          content: '❌ Database is not available.',
           ephemeral: true
         });
       }
 
-      // Tester différentes façons d'accéder à la DB
-      let database = db.db || db.database || db.connection || db;
-
-      // Vérifier que les colonnes existent
-      const tableInfo = database.prepare('PRAGMA table_info(guilds)').all();
-      const columnNames = tableInfo.map(col => col.name);
-
-      if (!columnNames.includes('verification_channel') || !columnNames.includes('verification_role')) {
-        return interaction.reply({
-          content: '❌ Database columns are missing!\n\n**Please run `/db-setup` first** to add the required columns.',
-          ephemeral: true
-        });
-      }
-
-      database.prepare(`
-        UPDATE guilds 
-        SET verification_channel = ?, verification_role = ? 
-        WHERE guild_id = ?
-      `).run(channel.id, role.id, interaction.guildId);
-
-      await interaction.reply({
-        content: `✅ **Verification system configured!**\n\n` +
-                 `📌 **Channel:** ${channel}\n` +
-                 `🎭 **Role:** ${role}\n\n` +
-                 `Members who use \`/verify\` in ${channel} will receive the ${role} role.`,
-        ephemeral: true
+      // Utiliser la méthode existante updateGuildConfig
+      db.updateGuildConfig(interaction.guildId, {
+        verification_channel: channel.id,
+        verification_role: role.id
       });
+
+      const embed = new EmbedBuilder()
+        .setColor('#00FF00')
+        .setTitle('✅ Verification System Configured')
+        .setDescription('The verification system has been set up successfully!')
+        .addFields(
+          { name: '📌 Verification Channel', value: `${channel}`, inline: true },
+          { name: '🎭 Verification Role', value: `${role}`, inline: true }
+        )
+        .setFooter({ text: `Configured by ${interaction.user.tag}` })
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed], ephemeral: true });
 
     } catch (error) {
       console.error('Error in setup-verification:', error);
       
+      const errorEmbed = new EmbedBuilder()
+        .setColor('#FF0000')
+        .setTitle('❌ Error')
+        .setDescription('An error occurred while setting up verification.')
+        .addFields({ name: 'Error', value: error.message })
+        .setTimestamp();
+      
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({
-          content: '❌ An error occurred: ' + error.message,
-          ephemeral: true
-        });
+        await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
       }
     }
   }
