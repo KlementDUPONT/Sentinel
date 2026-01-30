@@ -1,161 +1,135 @@
-import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
-import CustomEmbedBuilder from '../../utils/embedBuilder.js';
-import config from '../../config/config.js';
+import { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Affiche la liste des commandes')
+    .setDescription('Afficher le menu d\'aide')
     .addStringOption(option =>
-      option.setName('commande')
-        .setDescription('Nom de la commande pour plus d\'informations')
+      option
+        .setName('command')
+        .setDescription('Nom de la commande pour obtenir plus d\'informations')
         .setRequired(false)
-        .setAutocomplete(true)),
+    ),
 
-  cooldown: 3,
+  category: 'utility',
 
   async execute(interaction) {
-    const commandName = interaction.options.getString('commande');
+    const { client } = interaction;
+    const commandName = interaction.options.getString('command');
 
+    // Aide pour une commande spécifique
     if (commandName) {
-      return showCommandHelp(interaction, commandName);
+      const command = client.commands.get(commandName.toLowerCase());
+
+      if (!command) {
+        return await interaction.reply({
+          content: '❌ Cette commande n\'existe pas.',
+          flags: 64
+        });
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(0x5865F2)
+        .setTitle('📖 Aide: /' + command.data.name)
+        .setDescription(command.data.description || 'Aucune description disponible')
+        .addFields(
+          {
+            name: '📁 Catégorie',
+            value: command.category || 'Aucune',
+            inline: true
+          },
+          {
+            name: '⏱️ Cooldown',
+            value: (command.cooldown || 3) + ' secondes',
+            inline: true
+          }
+        )
+        .setFooter({
+          text: 'Sentinel Bot • ' + new Date().toLocaleDateString('fr-FR'),
+          iconURL: client.user.displayAvatarURL()
+        })
+        .setTimestamp();
+
+      // Ajouter les options si elles existent
+      if (command.data.options && command.data.options.length > 0) {
+        const optionsText = command.data.options.map(opt => {
+          const required = opt.required ? '**[Requis]**' : '[Optionnel]';
+          return '`' + opt.name + '` ' + required + ' - ' + opt.description;
+        }).join('\n');
+
+        embed.addFields({
+          name: '⚙️ Options',
+          value: optionsText,
+          inline: false
+        });
+      }
+
+      return await interaction.reply({ embeds: [embed] });
     }
 
-    await interaction.deferReply({ flags: 64 });
+    // Menu d'aide général
+    const categories = {};
+    
+    client.commands.forEach(cmd => {
+      const category = cmd.category || 'Autre';
+      if (!categories[category]) {
+        categories[category] = [];
+      }
+      categories[category].push(cmd);
+    });
 
-    try {
-      // Récupérer toutes les commandes par catégorie
-      const categories = {};
-      
-      interaction.client.commands.forEach(command => {
-        const category = command.category || 'Autre';
-        if (!categories[category]) {
-          categories[category] = [];
-        }
-        categories[category].push(command);
-      });
+    const categoryEmojis = {
+      admin: '⚙️',
+      moderation: '🛡️',
+      economy: '💰',
+      fun: '🎮',
+      utility: '🔧',
+      levels: '📊'
+    };
 
-      // Créer l'embed principal
-      const embed = CustomEmbedBuilder.create(
-        `📚 Centre d'aide - ${config.bot.name}`,
-        `Utilise \`/help <commande>\` pour plus d'informations sur une commande spécifique.\n\n**Nombre de commandes :** ${interaction.client.commands.size}`,
-        {
-          thumbnail: interaction.client.user.displayAvatarURL({ size: 256 }),
-        }
-      );
+    const embed = new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setTitle('📚 Menu d\'aide - Sentinel Bot')
+      .setDescription('Utilisez `/help <commande>` pour plus d\'informations sur une commande spécifique.')
+      .setThumbnail(client.user.displayAvatarURL())
+      .setFooter({
+        text: 'Sentinel Bot • Version alpha.2',
+        iconURL: client.user.displayAvatarURL()
+      })
+      .setTimestamp();
 
-      // Emojis pour les catégories
-      const categoryEmojis = {
-        moderation: '🔨',
-        economy: '💰',
-        levels: '📊',
-        utility: '🔧',
-        fun: '🎮',
-        tickets: '🎫',
-        admin: '⚙️',
-      };
-
-      // Ajouter chaque catégorie
-      Object.keys(categories).sort().forEach(category => {
-        const emoji = categoryEmojis[category.toLowerCase()] || '📁';
-        const commands = categories[category]
-          .map(cmd => `\`/${cmd.data.name}\``)
-          .join(', ');
-        
-        embed.addFields({
-          name: `${emoji} ${category.charAt(0).toUpperCase() + category.slice(1)}`,
-          value: commands || 'Aucune commande',
-          inline: false,
-        });
-      });
+    // Ajouter chaque catégorie
+    for (const [category, commands] of Object.entries(categories)) {
+      const emoji = categoryEmojis[category.toLowerCase()] || '📁';
+      const commandList = commands
+        .map(cmd => '`/' + cmd.data.name + '`')
+        .join(', ');
 
       embed.addFields({
-        name: '🔗 Liens utiles',
-        value: [
-          '[Support](https://discord.gg/votre-invite)',
-          '[Documentation](https://docs.ph03nixcode.fr)',
-          '[Site Web](https://ph03nixcode.fr)',
-        ].join(' • '),
-        inline: false,
+        name: emoji + ' ' + category.charAt(0).toUpperCase() + category.slice(1),
+        value: commandList || 'Aucune commande',
+        inline: false
       });
-
-      await interaction.editReply({ embeds: [embed] });
-
-    } catch (error) {
-      throw error;
     }
-  },
 
-  async autocomplete(interaction) {
-    const focusedValue = interaction.options.getFocused().toLowerCase();
-    const commands = interaction.client.commands
-      .filter(cmd => cmd.data.name.toLowerCase().includes(focusedValue))
-      .map(cmd => ({ name: cmd.data.name, value: cmd.data.name }))
-      .slice(0, 25);
+    // Menu déroulant pour naviguer
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('help_category')
+      .setPlaceholder('📂 Choisir une catégorie')
+      .addOptions(
+        Object.keys(categories).map(category => ({
+          label: category.charAt(0).toUpperCase() + category.slice(1),
+          description: categories[category].length + ' commande(s)',
+          value: category,
+          emoji: categoryEmojis[category.toLowerCase()] || '📁'
+        }))
+      );
 
-    await interaction.respond(commands);
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    await interaction.reply({
+      embeds: [embed],
+      components: [row]
+    });
   },
 };
-
-async function showCommandHelp(interaction, commandName) {
-  const command = interaction.client.commands.get(commandName);
-
-  if (!command) {
-    return interaction.reply({
-      embeds: [CustomEmbedBuilder.error(
-        'Commande introuvable',
-        `La commande \`${commandName}\` n'existe pas.`
-      )],
-      flags: 64,
-    });
-  }
-
-  const embed = CustomEmbedBuilder.create(
-    `📖 Aide : /${command.data.name}`,
-    command.data.description,
-    { color: config.colors.info }
-  );
-
-  // Options de la commande
-  if (command.data.options && command.data.options.length > 0) {
-    const options = command.data.options.map(opt => {
-      const required = opt.required ? '`[requis]`' : '`[optionnel]`';
-      return `**${opt.name}** ${required}\n└ ${opt.description}`;
-    }).join('\n\n');
-
-    embed.addFields({
-      name: '📝 Options',
-      value: options,
-      inline: false,
-    });
-  }
-
-  // Permissions requises
-  if (command.permissions && command.permissions.length > 0) {
-    embed.addFields({
-      name: '🔐 Permissions requises',
-      value: command.permissions.map(p => `\`${p}\``).join(', '),
-      inline: false,
-    });
-  }
-
-  // Cooldown
-  if (command.cooldown) {
-    embed.addFields({
-      name: '⏱️ Cooldown',
-      value: `${command.cooldown} seconde(s)`,
-      inline: true,
-    });
-  }
-
-  // Catégorie
-  if (command.category) {
-    embed.addFields({
-      name: '📁 Catégorie',
-      value: command.category,
-      inline: true,
-    });
-  }
-
-  await interaction.reply({ embeds: [embed], flags: 64 });
-}
