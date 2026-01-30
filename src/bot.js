@@ -141,7 +141,8 @@ class SentinelBot {
       logger.error('❌ Failed to initialize bot:');
       logger.error('Error message: ' + error.message);
       if (error.stack) {
-        logger.error('Stack trace:', error.stack);
+        logger.error('Stack trace:');
+        console.error(error.stack);
       }
       process.exit(1);
     }
@@ -151,7 +152,8 @@ class SentinelBot {
 // Error handlers
 process.on('unhandledRejection', (error) => {
   if (logger && logger.error) {
-    logger.error('❌ Unhandled Promise Rejection:', error);
+    logger.error('❌ Unhandled Promise Rejection:');
+    console.error(error);
   } else {
     console.error('❌ Unhandled Promise Rejection:', error);
   }
@@ -159,7 +161,8 @@ process.on('unhandledRejection', (error) => {
 
 process.on('uncaughtException', (error) => {
   if (logger && logger.error) {
-    logger.error('❌ Uncaught Exception:', error);
+    logger.error('❌ Uncaught Exception:');
+    console.error(error);
   } else {
     console.error('❌ Uncaught Exception:', error);
   }
@@ -191,7 +194,13 @@ bot.setupHealthCheck();
 logger.info('⏳ Step 2: Waiting 1 second before Discord connection...');
 setTimeout(async () => {
   logger.info('🤖 Step 3: Initializing Discord bot...');
-  await bot.initialize();
+  try {
+    await bot.initialize();
+  } catch (error) {
+    logger.error('❌ Fatal error during initialization:');
+    console.error(error);
+    process.exit(1);
+  }
 }, 1000);
 
 export default bot;
