@@ -10,7 +10,10 @@ export default {
 
   async execute(interaction) {
     try {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.reply({
+        content: '⏳ Setting up database...',
+        flags: 64
+      });
 
       const db = interaction.client.db;
 
@@ -21,7 +24,7 @@ export default {
           .setDescription('Database handler does not support verification columns.')
           .setTimestamp();
         
-        return interaction.editReply({ embeds: [errorEmbed] });
+        return interaction.editReply({ content: null, embeds: [errorEmbed] });
       }
 
       // Ajouter les colonnes
@@ -36,7 +39,7 @@ export default {
         )
         .setTimestamp();
 
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({ content: null, embeds: [embed] });
 
     } catch (error) {
       console.error('Error in db-setup:', error);
@@ -48,8 +51,8 @@ export default {
         .addFields({ name: 'Error', value: error.message })
         .setTimestamp();
       
-      if (interaction.deferred) {
-        await interaction.editReply({ embeds: [errorEmbed] });
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply({ content: null, embeds: [errorEmbed] });
       }
     }
   }

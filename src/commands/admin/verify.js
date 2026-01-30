@@ -71,19 +71,27 @@ export default {
       });
 
       // Créer un collector pour les boutons
-      const filter = i => i.user.id === interaction.user.id && i.customId.includes(timestamp.toString());
+      const filter = i => {
+        // Vérifier que c'est le bon user et que le customId contient le timestamp
+        return i.user.id === interaction.user.id && i.customId.includes(timestamp.toString());
+      };
+
       const collector = interaction.channel.createMessageComponentCollector({ 
         filter, 
-        time: 30000 
+        time: 30000,
+        max: 1 // Accepter seulement 1 clic
       });
 
       collector.on('collect', async i => {
+        // Déférer immédiatement pour éviter le timeout
+        await i.deferUpdate();
+
         if (i.customId.includes('correct')) {
           try {
             const role = interaction.guild.roles.cache.get(verificationConfig.verification_role);
             
             if (!role) {
-              return i.update({
+              return interaction.editReply({
                 content: '❌ Verification role not found. Please contact an admin.',
                 components: []
               });
@@ -91,24 +99,23 @@ export default {
 
             await member.roles.add(role);
             
-            await i.update({
+            await interaction.editReply({
               content: '✅ **Verification successful!**\n\nYou now have access to the server.',
               components: []
             });
           } catch (error) {
             console.error('Error adding verification role:', error);
-            await i.update({
+            await interaction.editReply({
               content: '❌ An error occurred while verifying you. Please contact an admin.',
               components: []
             }).catch(() => {});
           }
         } else {
-          await i.update({
+          await interaction.editReply({
             content: '❌ **Verification failed!**\n\nYou clicked the wrong button. Please try `/verify` again.',
             components: []
           }).catch(() => {});
         }
-        collector.stop();
       });
 
       collector.on('end', (collected, reason) => {
