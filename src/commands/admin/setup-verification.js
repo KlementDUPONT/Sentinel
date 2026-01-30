@@ -3,119 +3,78 @@ import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from 'discord.j
 export default {
   data: new SlashCommandBuilder()
     .setName('setup-verification')
-    .setDescription('Configurer le système de vérification CAPTCHA')
+    .setDescription('Configure the verification system')
     .addChannelOption(option =>
       option
         .setName('channel')
-        .setDescription('Le salon où les nouveaux membres doivent se vérifier')
+        .setDescription('Verification channel')
         .addChannelTypes(ChannelType.GuildText)
         .setRequired(true)
     )
     .addRoleOption(option =>
       option
         .setName('role')
-        .setDescription('Le rôle à donner après vérification')
+        .setDescription('Role to give after verification')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   category: 'admin',
-  userPermissions: [PermissionFlagsBits.Administrator],
-  botPermissions: [PermissionFlagsBits.ManageRoles, PermissionFlagsBits.ManageChannels],
 
   async execute(interaction) {
-    const { client, guild } = interaction;
-    const channel = interaction.options.getChannel('channel');
-    const role = interaction.options.getRole('role');
-
     try {
+      const channel = interaction.options.getChannel('channel');
+      const role = interaction.options.getRole('role');
+
+      // Vérifier que le bot peut gérer le rôle
+      if (role.position >= interaction.guild.members.me.roles.highest.position) {
+        return interaction.reply({
+          content: '❌ I cannot manage this role as it is higher than my highest role.',
+          ephemeral: true
+        });
+      }
+
       // Vérifier que le rôle n'est pas @everyone
-      if (role.id === guild.id) {
-        return await interaction.reply({
-          content: '❌ Vous ne pouvez pas utiliser le rôle @everyone.',
-          flags: 64
+      if (role.id === interaction.guild.id) {
+        return interaction.reply({
+          content: '❌ You cannot use @everyone as verification role.',
+          ephemeral: true
         });
       }
 
-      // Vérifier la hiérarchie des rôles
-      const botMember = guild.members.me;
-      if (role.position >= botMember.roles.highest.position) {
-        return await interaction.reply({
-          content: '❌ Ce rôle est au-dessus ou égal à mon rôle le plus élevé. Je ne peux pas le gérer.',
-          flags: 64
-        });
-      }
-
-      // Sauvegarder la configuration dans la base de données
-      const guildData = client.db.getGuild(guild.id);
+      // Sauvegarder dans la base de données
+      const db = interaction.client.db;
       
-      client.db.db.prepare(
-        'UPDATE guilds SET verification_channel = ?, verification_role = ? WHERE guild_id = ?'
-      ).run(channel.id, role.id, guild.id);
-
-      // Créer un embed de confirmation
-      const embed = {
-        color: 0x00ff00,
-        title: '✅ Système de vérification configuré',
-        description: 'Le système CAPTCHA est maintenant actif !',
-        fields: [
-          {
-            name: '📝 Salon de vérification',
-            value: channel.toString(),
-            inline: true
-          },
-          {
-            name: '🎭 Rôle membre',
-            value: role.toString(),
-            inline: true
-          },
-          {
-            name: '📋 Fonctionnement',
-            value: '1. Les nouveaux membres arrivent\n2. Ils doivent faire `/verify` dans ' + channel.toString() + '\n3. Ils résolvent un CAPTCHA\n4. Ils reçoivent le rôle ' + role.toString(),
-            inline: false
-          }
-        ],
-        footer: {
-          text: 'Sentinel Bot',
-          icon_url: client.user.displayAvatarURL()
-        },
-        timestamp: new Date().toISOString()
-      };
-
-      await interaction.reply({ embeds: [embed] });
-
-      // Envoyer un message dans le salon de vérification
-      try {
-        const verificationEmbed = {
-          color: 0x5865f2,
-          title: '🔐 Vérification obligatoire',
-          description: 'Bienvenue sur **' + guild.name + '** !\n\nPour accéder aux autres salons, vous devez vous vérifier en utilisant la commande `/verify`.',
-          fields: [
-            {
-              name: '📝 Comment faire ?',
-              value: 'Tapez `/verify` et suivez les instructions.',
-              inline: false
-            }
-          ],
-          footer: {
-            text: 'Sentinel Bot',
-            icon_url: client.user.displayAvatarURL()
-          },
-          timestamp: new Date().toISOString()
-        };
-
-        await channel.send({ embeds: [verificationEmbed] });
-      } catch (error) {
-        console.error('Erreur envoi message verification:', error);
+      if (!db || !db.db) {
+        return interaction.reply({
+          content: '❌ Database is not available. Please contact an administrator.',
+          ephemeral: true
+        });
       }
+
+      db.db.prepare(`
+        UPDATE guilds 
+        SET verification_channel = ?, verification_role = ? 
+        WHERE guild_id = ?
+      `).run(channel.id, role.id, interaction.guildId);
+
+      await interaction.reply({
+        content: `✅ Verification system configured!\n\n` +
+                 `📌 **Channel:** ${channel}\n` +
+                 `🎭 **Role:** ${role}\n\n` +
+                 `Members who use \`/verify\` in ${channel} will receive the ${role} role.`,
+        ephemeral: true
+      });
 
     } catch (error) {
-      console.error('Erreur dans setup-verification:', error);
+      console.error('Error in setup-verification:', error);
       
-      await interaction.reply({
-        content: '❌ Une erreur est survenue lors de la configuration.',
-        flags: 64
-      });
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: '❌ An error occurred while setting up verification.',
+          ephemeral: true
+        });
+      }
     }
-  },
+  }
 };
