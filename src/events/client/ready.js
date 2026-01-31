@@ -2,121 +2,64 @@ import { ActivityType } from 'discord.js';
 import logger from '../../utils/logger.js';
 
 export default {
-  name: 'clientReady',
-  category: 'client',
-  once: true,
+    name: 'ready', // Changé de clientReady à ready (standard d.js)
+    once: true,
 
-  async execute(client) {
-    try {
-      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      logger.info(`✅ ${client.user.tag} is now online!`);
-      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      logger.info(`📊 Guilds: ${client.guilds.cache.size}`);
-      logger.info(`👥 Users: ${client.users.cache.size}`);
-      logger.info(`📝 Commands: ${client.commands.size}`);
-      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    async execute(client) {
+        try {
+            logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            logger.info(`✅ Logged in as ${client.user.tag}`);
+            logger.info(`📊 Serving ${client.guilds.cache.size} guilds`);
+            logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-      // Set bot status
-      client.user.setPresence({
-        activities: [
-          {
-            name: `${client.guilds.cache.size} serveurs | /help`,
-            type: ActivityType.Watching,
-          },
-        ],
-        status: 'online',
-      });
+            client.user.setPresence({
+                activities: [{ name: `${client.guilds.cache.size} serveurs | /help`, type: ActivityType.Watching }],
+                status: 'online',
+            });
 
-      // Auto-deploy slash commands
-      await deployCommands(client);
+            // Initialize database for guilds
+            await initializeGuilds(client);
 
-      // Initialize database for all guilds
-      await initializeGuilds(client);
+            // Check health
+            checkDatabaseHealth(client);
 
-      // Check database health
-      checkDatabaseHealth(client);
-
-      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      logger.info('🎉 Sentinel is ready to serve!');
-      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-    } catch (error) {
-      logger.error('❌ Error executing event clientReady:', error);
-    }
-  },
+            logger.info('🎉 Sentinel is fully operational!');
+        } catch (error) {
+            logger.error('❌ Error in ready event:', error);
+        }
+    },
 };
 
-async function deployCommands(client) {
-  try {
-    logger.info('🔄 Auto-deploying slash commands...');
-
-    // Convert commands to JSON format
-    const commands = Array.from(client.commands.values()).map((cmd) => cmd.data.toJSON());
-
-    logger.info(`🔄 Deploying ${commands.length} slash commands...`);
-
-    // Deploy to all guilds
-    for (const guild of client.guilds.cache.values()) {
-      try {
-        await guild.commands.set(commands);
-      } catch (error) {
-        logger.error(`Failed to deploy commands to guild ${guild.name}:`, error);
-      }
-    }
-
-    logger.info('✅ Successfully deployed guild commands');
-  } catch (error) {
-    logger.error('Failed to deploy commands:', error);
-  }
-}
-
 async function initializeGuilds(client) {
-  try {
     const db = client.db;
 
-    for (const guild of client.guilds.cache.values()) {
-      // Check if guild exists in database
-      const existingGuild = db.getGuild(guild.id);
-
-      if (!existingGuild) {
-        // Create guild entry
-        db.createGuild(guild.id, guild.name);
-        logger.info(`📝 Registered new guild: ${guild.name} (${guild.id})`);
-      }
-
-      // Initialize users for this guild
-      for (const member of guild.members.cache.values()) {
-        if (!member.user.bot) {
-          const existingUser = db.getUser(member.id, guild.id);
-          if (!existingUser) {
-            db.createUser(member.id, guild.id);
-          }
-        }
-      }
+    // Vérification de sécurité : est-ce que la table existe ?
+    const tableCheck = db.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='guilds';").get();
+    if (!tableCheck) {
+        logger.warn('⚠️ Database tables not found. Waiting for migrations...');
+        return;
     }
 
-    logger.info('✅ All guilds initialized');
-  } catch (error) {
-    logger.error('Failed to initialize guilds:', error);
-  }
+    for (const guild of client.guilds.cache.values()) {
+        try {
+            const existingGuild = db.getGuild(guild.id);
+            if (!existingGuild) {
+                db.createGuild(guild.id, guild.name);
+                logger.info(`📝 Registered guild: ${guild.name}`);
+            }
+        } catch (err) {
+            logger.error(`Failed to init guild ${guild.id}:`, err.message);
+        }
+    }
 }
 
 function checkDatabaseHealth(client) {
-  try {
-    const db = client.db;
-    const stats = db.getStats();
-
-    if (stats) {
-      logger.info('💾 Database: Healthy');
-      logger.info(`   - Guilds: ${stats.guilds}`);
-      logger.info(`   - Users: ${stats.users}`);
-      logger.info(`   - Active warns: ${stats.warns}`);
-      logger.info(`   - Tickets: ${stats.tickets.total} (${stats.tickets.open} open, ${stats.tickets.closed} closed)`);
-      logger.info(`   - Economy: ${stats.economy.totalBalance} coins in circulation`);
-    } else {
-      logger.warn('⚠️ Database stats unavailable');
+    try {
+        const stats = client.db.getStats();
+        if (stats) {
+            logger.info(`💾 DB Status: ${stats.guilds} Guilds | ${stats.users} Users`);
+        }
+    } catch (error) {
+        logger.warn('💾 Database stats not available yet.');
     }
-  } catch (error) {
-    logger.error('Failed to get database stats:', error);
-  }
 }
