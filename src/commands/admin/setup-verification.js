@@ -1,37 +1,32 @@
-// src/commands/admin/setup-verification.js
 import { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 
 export const data = new SlashCommandBuilder()
     .setName('setup-verification')
-    .setDescription('Configure le salon de vérification')
-    .addChannelOption(opt => opt.setName('channel').setDescription('Salon').setRequired(true))
-    .addRoleOption(opt => opt.setName('role').setDescription('Rôle').setRequired(true))
+    .setDescription('Setup verif')
+    .addChannelOption(o => o.setName('channel').setDescription('Salon').setRequired(true))
+    .addRoleOption(o => o.setName('role').setDescription('Rôle').setRequired(true))
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction) {
-    try {
-        const channel = interaction.options.getChannel('channel');
-        const role = interaction.options.getRole('role');
+    // 1. Réponse immédiate pour Discord
+    await interaction.deferReply({ ephemeral: true });
 
-        // On enregistre d'abord en DB
+    const channel = interaction.options.getChannel('channel');
+    const role = interaction.options.getRole('role');
+
+    try {
+        // 2. Enregistrement DB
         interaction.client.db.updateVerification(interaction.guild.id, channel.id, role.id);
 
-        const embed = new EmbedBuilder()
-            .setTitle('🛡️ Vérification Sentinel')
-            .setDescription('Cliquez sur le bouton pour obtenir l\'accès au serveur.')
-            .setColor('#2ecc71');
-
+        // 3. Envoi du message
+        const embed = new EmbedBuilder().setTitle('Vérification').setDescription('Cliquez ci-dessous.').setColor('Green');
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('verify_user')
-                .setLabel('Se vérifier')
-                .setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId('verify_user').setLabel('S\'enregistrer').setStyle(ButtonStyle.Success)
         );
 
         await channel.send({ embeds: [embed], components: [row] });
-        return interaction.reply({ content: `✅ Configuration terminée dans ${channel}`, ephemeral: true });
+        await interaction.editReply('✅ Installé avec succès.');
     } catch (err) {
-        console.error(err);
-        return interaction.reply({ content: '❌ Erreur lors de la configuration.', ephemeral: true });
+        await interaction.editReply('❌ Erreur : ' + err.message);
     }
 }
