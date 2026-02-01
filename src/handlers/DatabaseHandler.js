@@ -1,7 +1,5 @@
 import dbConnection from '../database/connection.js';
 import logger from '../utils/logger.js';
-import fs from 'fs';
-import { join, dirname } from 'path';
 
 class DatabaseHandler {
     constructor() {
@@ -10,9 +8,14 @@ class DatabaseHandler {
 
     async initialize() {
         try {
-            // Utilise le singleton centralisé
             this.db = dbConnection.connect();
-            logger.info('✅ DatabaseHandler linked to central connection');
+            // On s'assure que les colonnes de vérification existent
+            this.db.exec(`
+                ALTER TABLE guilds ADD COLUMN verification_channel TEXT;
+                ALTER TABLE guilds ADD COLUMN verification_role TEXT;
+            `).catch(() => {}); // On ignore si les colonnes existent déjà
+            
+            logger.info('✅ DatabaseHandler initialized with verification support');
             return this.db;
         } catch (error) {
             logger.error('❌ Failed to initialize DatabaseHandler:', error);
@@ -20,37 +23,40 @@ class DatabaseHandler {
         }
     }
 
-    // --- Méthodes Guild ---
     getGuild(guildId) {
         return this.db.prepare('SELECT * FROM guilds WHERE guild_id = ?').get(guildId);
     }
 
     createGuild(guildId, guildName) {
         return this.db.prepare(`
-            INSERT INTO guilds (guild_id, name) 
-            VALUES (?, ?)
+            INSERT INTO guilds (guild_id, name) VALUES (?, ?)
             ON CONFLICT(guild_id) DO UPDATE SET name = excluded.name
         `).run(guildId, guildName);
     }
 
-    // --- Méthodes User (XP & Économie) ---
-    getUser(userId, guildId) {
-        return this.db.prepare('SELECT * FROM users WHERE user_id = ? AND guild_id = ?').get(userId, guildId);
+    updateGuildConfig(guildId, updates) {
+        const keys = Object.keys(updates);
+        const values = Object.values(updates);
+        const setClause = keys.map(key => `${key} = ?`).join(', ');
+        return this.db.prepare(`UPDATE guilds SET ${setClause} WHERE guild_id = ?`).run(...values, guildId);
     }
 
-    createUser(userId, guildId) {
+    // Ajout de la fonction manquante qui faisait crash /setup-verification
+    updateVerification(guildId, channelId, roleId) {
         return this.db.prepare(`
-            INSERT INTO users (user_id, guild_id) 
-            VALUES (?, ?)
-            ON CONFLICT(user_id, guild_id) DO NOTHING
-        `).run(userId, guildId);
+            UPDATE guilds SET verification_channel = ?, verification_role = ? WHERE guild_id = ?
+        `).run(channelId, roleId, guildId);
     }
 
-    updateUserXP(userId, guildId, level, xp) {
-        return this.db.prepare(`
-            UPDATE users SET level = ?, xp = ?, updated_at = CURRENT_TIMESTAMP 
-            WHERE user_id = ? AND guild_id = ?
-        `).run(level, xp, userId, guildId);
+    getStats() {
+        try {
+            const guilds = this.db.prepare('SELECT COUNT(*) as count FROM guilds').get().count;
+            const users = this.db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+            const warns = this.db.prepare('SELECT COUNT(*) as count FROM warns WHERE active = 1').get().count;
+            return { guilds, users, warns };
+        } catch (e) {
+            return { guilds: 0, users: 0, warns: 0 };
+        }
     }
 }
 
