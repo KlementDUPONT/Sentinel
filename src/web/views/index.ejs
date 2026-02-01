@@ -3,92 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sentinel Dashboard</title>
+    <title>Sentinel Dashboard | v2.0.1-beta.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #0f172a; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; 
+        }
         .card-glass {
             background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-glass:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-4px);
         }
     </style>
 </head>
-<body class="text-slate-200 font-sans">
+<body class="text-slate-200 antialiased">
 
-<nav class="flex items-center justify-between px-8 py-4 bg-slate-900 border-b border-slate-800">
-    <div class="flex items-center gap-3">
-        <img src="<%= bot.displayAvatarURL() %>" class="w-10 h-10 rounded-full shadow-lg border-2 border-blue-500">
-        <span class="text-xl font-bold tracking-tight text-white">Sentinel <span class="text-blue-500">BETA</span></span>
-    </div>
-    <div class="flex items-center gap-4">
-            <span class="bg-green-500/10 text-green-400 px-3 py-1 rounded-full text-xs font-mono border border-green-500/20">
-                <i class="fas fa-circle animate-pulse mr-2"></i>Live on Render
-            </span>
-        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all">
-            Logout
-        </button>
-    </div>
-</nav>
+    <nav class="flex items-center justify-between px-6 py-4 bg-slate-900/80 sticky top-0 z-50 border-b border-slate-800 backdrop-blur-md">
+        <div class="flex items-center gap-4">
+            <div class="relative">
+                <img src="<%= bot.displayAvatarURL() %>" class="w-10 h-10 rounded-full border-2 border-blue-500 shadow-blue-500/20 shadow-lg">
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></div>
+            </div>
+            <div>
+                <span class="text-xl font-extrabold tracking-tight text-white">Sentinel <span class="text-blue-500 text-sm font-mono ml-1">BETA</span></span>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-6">
+            <div class="hidden md:flex flex-col items-end">
+                <span class="text-xs font-mono text-green-400">STATUS: ONLINE</span>
+                <span class="text-[10px] text-slate-500 uppercase tracking-widest">Render.com Instance</span>
+            </div>
+            <a href="/logout" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-red-500/20">
+                <i class="fas fa-sign-out-alt mr-2"></i>Déconnexion
+            </a>
+        </div>
+    </nav>
 
-<main class="max-w-6xl mx-auto p-8">
-    <header class="mb-10 text-center">
-        <h1 class="text-4xl font-extrabold text-white mb-2">Global Statistics</h1>
-        <p class="text-slate-400">Monitoring real-time performance and reach.</p>
-    </header>
+    <main class="max-w-7xl mx-auto px-6 py-12">
+        
+        <div class="mb-12">
+            <h1 class="text-4xl font-black text-white tracking-tight italic">COMMAND CENTER</h1>
+            <p class="text-slate-400 mt-2">Gestion globale de l'instance Sentinel v2.0.1-beta.1</p>
+        </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="card-glass p-6 rounded-2xl shadow-xl transition-transform hover:scale-105">
-            <div class="flex items-center gap-4">
-                <div class="p-4 bg-blue-500/20 rounded-xl text-blue-400">
-                    <i class="fas fa-server text-2xl"></i>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            
+            <div class="card-glass p-6 rounded-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-blue-500/10 rounded-xl text-blue-500">
+                        <i class="fas fa-server text-xl"></i>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Live Data</span>
                 </div>
-                <div>
-                    <p class="text-slate-400 text-sm">Servers Connected</p>
-                    <h2 class="text-3xl font-bold text-white"><%= stats.guilds %></h2>
+                <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider">Serveurs</h3>
+                <p class="text-3xl font-bold text-white mt-1"><%= stats?.guilds || 0 %></p>
+            </div>
+
+            <div class="card-glass p-6 rounded-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-purple-500/10 rounded-xl text-purple-500">
+                        <i class="fas fa-users text-xl"></i>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Engagement</span>
+                </div>
+                <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider">Utilisateurs</h3>
+                <p class="text-3xl font-bold text-white mt-1"><%= stats?.users || 0 %></p>
+            </div>
+
+            <div class="card-glass p-6 rounded-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-yellow-500/10 rounded-xl text-yellow-500">
+                        <i class="fas fa-coins text-xl"></i>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Currency</span>
+                </div>
+                <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider">Masse Monétaire</h3>
+                <p class="text-3xl font-bold text-white mt-1"><%= stats?.economy?.totalBalance || 0 %> <span class="text-sm text-slate-500">coins</span></p>
+            </div>
+
+            <div class="card-glass p-6 rounded-2xl">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-red-500/10 rounded-xl text-red-500">
+                        <i class="fas fa-hammer text-xl"></i>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Safety</span>
+                </div>
+                <h3 class="text-slate-400 text-sm font-medium uppercase tracking-wider">Warns Actifs</h3>
+                <p class="text-3xl font-bold text-white mt-1"><%= stats?.warns || 0 %></p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-slate-900/50 border border-slate-800 rounded-3xl p-8">
+                    <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                        <i class="fas fa-list-ul text-blue-500"></i> Vos Serveurs
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="p-10 border-2 border-dashed border-slate-800 rounded-2xl text-center">
+                            <i class="fas fa-lock text-4xl text-slate-700 mb-4"></i>
+                            <p class="text-slate-500 italic">L'authentification OAuth2 est en cours de déploiement.<br>Bientôt, vous verrez ici la liste de vos serveurs administrables.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="card-glass p-6 rounded-3xl">
+                    <h3 class="font-bold text-white mb-4 italic tracking-widest uppercase text-xs">System Status</h3>
+                    <ul class="space-y-3 text-sm">
+                        <li class="flex justify-between border-b border-slate-800 pb-2">
+                            <span class="text-slate-500">Latence API</span>
+                            <span class="text-green-400 font-mono">PONG ms</span>
+                        </li>
+                        <li class="flex justify-between border-b border-slate-800 pb-2">
+                            <span class="text-slate-500">Hébergeur</span>
+                            <span class="text-slate-300">Render.com</span>
+                        </li>
+                        <li class="flex justify-between border-b border-slate-800 pb-2">
+                            <span class="text-slate-500">Node Engine</span>
+                            <span class="text-slate-300">v18.20.8</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="bg-blue-600 rounded-3xl p-6 text-white overflow-hidden relative shadow-blue-500/20 shadow-2xl">
+                    <i class="fas fa-bolt absolute -right-4 -bottom-4 text-8xl opacity-20"></i>
+                    <h4 class="font-bold text-lg mb-1 italic">Mode BETA v2.0.1</h4>
+                    <p class="text-blue-100 text-xs">Le système d'XP a été désactivé pour prioriser la vitesse du panel web.</p>
                 </div>
             </div>
         </div>
 
-        <div class="card-glass p-6 rounded-2xl shadow-xl transition-transform hover:scale-105">
-            <div class="flex items-center gap-4">
-                <div class="p-4 bg-purple-500/20 rounded-xl text-purple-400">
-                    <i class="fas fa-users text-2xl"></i>
-                </div>
-                <div>
-                    <p class="text-slate-400 text-sm">Total Users</p>
-                    <h2 class="text-3xl font-bold text-white"><%= stats.users %></h2>
-                </div>
-            </div>
-        </div>
+    </main>
 
-        <div class="card-glass p-6 rounded-2xl shadow-xl transition-transform hover:scale-105">
-            <div class="flex items-center gap-4">
-                <div class="p-4 bg-red-500/20 rounded-xl text-red-400">
-                    <i class="fas fa-shield-alt text-2xl"></i>
-                </div>
-                <div>
-                    <p class="text-slate-400 text-sm">Active Warnings</p>
-                    <h2 class="text-3xl font-bold text-white"><%= stats.warns %></h2>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mt-12 p-6 bg-slate-900 rounded-2xl border border-slate-800">
-        <h3 class="text-lg font-semibold text-white mb-4"><i class="fas fa-terminal mr-2 text-blue-500"></i>System Logs</h3>
-        <div class="bg-black/50 p-4 rounded-lg font-mono text-sm text-blue-300">
-            [SYSTEM] sentinel-bot@2.0.1-beta.1 initialized successfully.<br>
-            [DB] SQLite connection stable (WAL Mode).<br>
-            [WEB] Dashboard accessible at port 8000.
-        </div>
-    </div>
-</main>
-
-<footer class="mt-20 py-8 text-center text-slate-500 border-t border-slate-900">
-    Sentinel v2.0.1-beta.1 — Clément DUPONT &copy; 2026
-</footer>
+    <footer class="py-12 text-center text-slate-600 text-xs uppercase tracking-[0.3em]">
+        Sentinel Infrastructure &copy; 2026 — Clément DUPONT
+    </footer>
 
 </body>
 </html>

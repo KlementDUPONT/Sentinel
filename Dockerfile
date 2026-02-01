@@ -24,5 +24,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
   CMD node -e "require('http').get('http://localhost:8080/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
-# Start the bot
-CMD ["node", "src/bot.js"]
+# Start the bot after running migrations
+CMD ["sh", "-c", "npm run db:migrate && node src/bot.js"]
